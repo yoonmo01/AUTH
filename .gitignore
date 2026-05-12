@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.claude/
+logs/
+data/
+extracted_email_attachments/
+converted_documents/
+*.log
