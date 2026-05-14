@@ -216,3 +216,4 @@ data/
 extracted_email_attachments/
 converted_documents/
 *.log
+*.zip
