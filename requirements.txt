@@ -30,3 +30,7 @@ rich>=13.0
 click>=8.1
 pandas>=2.0
 numpy>=1.26
+
+psycopg2-binary>=2.9
+neo4j>=5.0
+chardet>=5.0
