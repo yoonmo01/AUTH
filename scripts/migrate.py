@@ -170,17 +170,35 @@ def verify(conn):
         print(f"    [{marker}] {t}: {count:,}건")
 
 
+def find_data_root():
+    # 스크립트 위치 기준으로 프로젝트 루트 탐색
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    candidate = os.path.join(project_root, "data")
+    if os.path.exists(candidate):
+        return candidate
+
+    # 현재 작업 디렉토리 기준
+    candidate = os.path.join(os.getcwd(), "data")
+    if os.path.exists(candidate):
+        return candidate
+
+    return None
+
+
 def main():
-    data_root = "c:/capstone_clean/data"
+    data_root = find_data_root()
 
     print("=" * 50)
     print("DB 마이그레이션 시작")
     print(f"data 경로: {data_root}")
     print("=" * 50)
 
-    if not os.path.exists(data_root):
-        print(f"오류: data 폴더가 없습니다 - {data_root}")
-        print("data/ 폴더를 c:/capstone_clean/data/ 위치에 복사한 후 다시 실행하세요.")
+    if not data_root:
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        print(f"오류: data 폴더를 찾을 수 없습니다.")
+        print(f"다음 위치 중 하나에 data/ 폴더를 놓아주세요:")
+        print(f"  {os.path.join(project_root, 'data')}")
+        print(f"  {os.path.join(os.getcwd(), 'data')}")
         sys.exit(1)
 
     try:
