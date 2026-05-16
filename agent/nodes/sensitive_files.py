@@ -37,9 +37,8 @@ import json
 import os
 import re
 
-from langchain_core.messages import SystemMessage
+from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
 
 from agent.prompts import load_prompt
 from agent.state import InvestigationState
@@ -60,9 +59,9 @@ def sensitive_files_node(state: InvestigationState) -> dict:
     # }
     # llm = ChatOpenAI(model=os.getenv("AGENT_MODEL", "gpt-5.1"), temperature=0)
     # tools = [search_vector_db, get_chunk_by_file, get_files_by_entity, get_file_metadata]
-    # agent = create_react_agent(
+    # agent = create_agent(
     #     llm, tools,
-    #     prompt=SystemMessage(content=prompt["system"].format(**ctx)),
+    #     system_prompt=prompt["system"].format(**ctx),
     # )
     # result = agent.invoke({"messages": [("user", prompt["task"].format(**ctx))]})
     # raw = result["messages"][-1].content

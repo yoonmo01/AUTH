@@ -12,9 +12,8 @@ import os
 import re
 from datetime import datetime, timedelta
 
-from langchain_core.messages import SystemMessage
+from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
 
 from agent.prompts import load_prompt
 from agent.state import InvestigationState
@@ -56,10 +55,10 @@ def baseline_node(state: InvestigationState) -> dict:
     )
     tools = [get_email_history, get_file_access_history, get_activity_events]
 
-    agent = create_react_agent(
+    agent = create_agent(
         llm,
         tools,
-        prompt=SystemMessage(content=prompt["system"].format(**ctx)),
+        system_prompt=prompt["system"].format(**ctx),
     )
 
     result = agent.invoke(
