@@ -166,15 +166,24 @@ def get_external_emails(user_name: str, date_from: str, date_to: str) -> str:
     Returns:
         외부 발신 이메일 목록 JSON 문자열
     """
-    # TODO: 동료 구현
-    # 힌트:
-    # SELECT id, subject, sender, recipients_to, sent_at, has_attachments, body_text
-    # FROM email_messages
-    # WHERE sender ILIKE %s
-    #   AND sent_at BETWEEN %s AND %s
-    #   AND recipients_to::text NOT ILIKE '%hb.%'
-    # ORDER BY sent_at
-    raise NotImplementedError("get_external_emails 구현 필요 — rdb_tools.py 참고")
+    conn = get_pg_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, subject, sender, recipients_to, sent_at,
+                       has_attachments, body_text
+                FROM email_messages
+                WHERE sender ILIKE %s
+                  AND sent_at BETWEEN %s AND %s
+                  AND recipients_to::text NOT ILIKE '%%hb.%%'
+                ORDER BY sent_at
+                """,
+                (f"%{user_name}%", date_from, date_to),
+            )
+            return _fetchall_as_json(cur)
+    finally:
+        conn.close()
 
 
 @tool
@@ -188,12 +197,34 @@ def get_anonymous_channel_emails(date_from: str, date_to: str) -> str:
     Returns:
         익명 채널 이메일 목록 JSON 문자열
     """
-    # TODO: 동료 구현
-    # 힌트:
-    # WHERE sent_at BETWEEN %s AND %s
-    #   AND (sender ILIKE '%protonmail%' OR sender ILIKE '%tmpbox%'
-    #        OR recipients_to::text ILIKE '%protonmail%' ...)
-    raise NotImplementedError("get_anonymous_channel_emails 구현 필요 — rdb_tools.py 참고")
+    conn = get_pg_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, subject, sender, recipients_to, sent_at,
+                       has_attachments, body_text
+                FROM email_messages
+                WHERE sent_at BETWEEN %s AND %s
+                  AND (
+                    sender ILIKE '%%protonmail%%'
+                    OR sender ILIKE '%%tmpbox%%'
+                    OR sender ILIKE '%%moakt%%'
+                    OR sender ILIKE '%%guerrillamail%%'
+                    OR sender ILIKE '%%tutanota%%'
+                    OR recipients_to::text ILIKE '%%protonmail%%'
+                    OR recipients_to::text ILIKE '%%tmpbox%%'
+                    OR recipients_to::text ILIKE '%%moakt%%'
+                    OR recipients_to::text ILIKE '%%guerrillamail%%'
+                    OR recipients_to::text ILIKE '%%tutanota%%'
+                  )
+                ORDER BY sent_at
+                """,
+                (date_from, date_to),
+            )
+            return _fetchall_as_json(cur)
+    finally:
+        conn.close()
 
 
 @tool
@@ -214,13 +245,36 @@ def get_messenger_logs(
     Returns:
         메신저 로그 목록 JSON 문자열 (id, chat_title, sender, message, sent_at)
     """
-    # TODO: 동료 구현
-    # 힌트:
-    # SELECT id, chat_title, sender, message, sent_at
-    # FROM messenger_logs
-    # WHERE user_name ILIKE %s AND sent_at BETWEEN %s AND %s
-    #   AND (keywords가 있으면 message ILIKE ANY 조건 추가)
-    raise NotImplementedError("get_messenger_logs 구현 필요 — rdb_tools.py 참고")
+    conn = get_pg_conn()
+    try:
+        with conn.cursor() as cur:
+            if keywords:
+                kw_list = [f"%{kw.strip()}%" for kw in keywords.split(",")]
+                cur.execute(
+                    """
+                    SELECT id, chat_title, sender, message, sent_at
+                    FROM messenger_logs
+                    WHERE sender ILIKE %s
+                      AND sent_at BETWEEN %s AND %s
+                      AND message ILIKE ANY(%s)
+                    ORDER BY sent_at
+                    """,
+                    (f"%{user_name}%", date_from, date_to, kw_list),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT id, chat_title, sender, message, sent_at
+                    FROM messenger_logs
+                    WHERE sender ILIKE %s
+                      AND sent_at BETWEEN %s AND %s
+                    ORDER BY sent_at
+                    """,
+                    (f"%{user_name}%", date_from, date_to),
+                )
+            return _fetchall_as_json(cur)
+    finally:
+        conn.close()
 
 
 @tool
@@ -233,9 +287,18 @@ def get_email_attachments(email_id: str) -> str:
     Returns:
         첨부파일 목록 JSON 문자열 (id, attachment_name, size_bytes, extracted_path)
     """
-    # TODO: 동료 구현
-    # 힌트:
-    # SELECT id, attachment_name, size_bytes, extracted_path
-    # FROM email_attachments
-    # WHERE email_id = %s
-    raise NotImplementedError("get_email_attachments 구현 필요 — rdb_tools.py 참고")
+    conn = get_pg_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, attachment_name, size_bytes, extracted_path
+                FROM email_attachments
+                WHERE email_id = %s
+                ORDER BY attachment_name
+                """,
+                (email_id,),
+            )
+            return _fetchall_as_json(cur)
+    finally:
+        conn.close()
