@@ -191,10 +191,11 @@ def get_external_emails(user_name: str, date_from: str, date_to: str) -> str:
 
 
 @tool
-def get_anonymous_channel_emails(date_from: str, date_to: str) -> str:
-    """ProtonMail, tmpbox 등 익명/일회용 채널 이메일을 조회합니다.
+def get_anonymous_channel_emails(user_name: str, date_from: str, date_to: str) -> str:
+    """ProtonMail, tmpbox 등 익명/일회용 채널 이메일을 조회합니다. (분석 대상 발신/수신 한정)
 
     Args:
+        user_name: 분석 대상 사용자 이름 (sender 또는 recipients_to에 포함된 항목만 반환)
         date_from: 시작 날짜 (YYYY-MM-DD)
         date_to: 종료 날짜 (YYYY-MM-DD)
 
@@ -210,6 +211,7 @@ def get_anonymous_channel_emails(date_from: str, date_to: str) -> str:
                        has_attachments, body_text
                 FROM email_messages
                 WHERE sent_at BETWEEN %s AND %s
+                  AND (sender ILIKE %s OR recipients_to::text ILIKE %s)
                   AND (
                     sender ILIKE '%%protonmail%%'
                     OR sender ILIKE '%%tmpbox%%'
@@ -224,7 +226,7 @@ def get_anonymous_channel_emails(date_from: str, date_to: str) -> str:
                   )
                 ORDER BY sent_at
                 """,
-                (date_from, date_to),
+                (date_from, date_to, f"%{user_name}%", f"%{user_name}%"),
             )
             return _fetchall_as_json(cur)
     finally:
