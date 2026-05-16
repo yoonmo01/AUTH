@@ -23,6 +23,10 @@ qdrant-client>=1.9
 aiohttp>=3.9
 json-repair>=0.25
 
+langgraph>=0.2
+langchain-openai>=0.1
+langchain-core>=0.2
+
 tqdm>=4.66
 requests>=2.31
 boto3>=1.35
