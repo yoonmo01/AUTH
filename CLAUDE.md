@@ -126,7 +126,7 @@ from openai import OpenAI  # Upstage는 OpenAI 호환 API 사용
 client = OpenAI(api_key=os.getenv("UPSTAGE_API_KEY"), base_url="https://api.upstage.ai/v1/solar")
 
 def embed(text: str) -> list[float]:
-    resp = client.embeddings.create(model="solar-embedding-1-large", input=text)
+    resp = client.embeddings.create(model="solar-embedding-1-large-passage", input=text)
     return resp.data[0].embedding
 ```
 
