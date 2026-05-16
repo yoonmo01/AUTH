@@ -41,9 +41,8 @@ import json
 import os
 import re
 
-from langchain_core.messages import SystemMessage
+from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
 
 from agent.prompts import load_prompt
 from agent.state import InvestigationState
@@ -75,9 +74,9 @@ def exfiltration_node(state: InvestigationState) -> dict:
     #     get_messenger_logs,
     #     get_email_attachments,
     # ]
-    # agent = create_react_agent(
+    # agent = create_agent(
     #     llm, tools,
-    #     prompt=SystemMessage(content=prompt["system"].format(**ctx)),
+    #     system_prompt=prompt["system"].format(**ctx),
     # )
     # result = agent.invoke({"messages": [("user", prompt["task"].format(**ctx))]})
     # raw = result["messages"][-1].content
