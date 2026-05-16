@@ -103,33 +103,126 @@ def _calculate_verdict(risk_score: int) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Main Agent 추론 헬퍼 — Sub-Agent task 생성 전 LLM 1회 호출
+# ---------------------------------------------------------------------------
+
+def _supervisor_reason(system_prompt: str, user_prompt: str) -> str:
+    """Main Agent LLM 1회 호출 — 다음 Sub-Agent에 줄 수사 지침 생성."""
+    llm = ChatOpenAI(model=os.getenv("AGENT_MODEL", "gpt-5.1"), temperature=0)
+    result = llm.invoke([
+        ("system", system_prompt),
+        ("user", user_prompt),
+    ])
+    return result.content
+
+
+# ---------------------------------------------------------------------------
 # 노드 함수
 # ---------------------------------------------------------------------------
 
 def step1_node(state: InvestigationState) -> dict:
-    """STEP 1 Baseline Sub-Agent 실행."""
-    return baseline_node(state)
+    """STEP 1 Baseline Sub-Agent 실행. Main Agent가 먼저 수사 지침을 추론한 뒤 task로 전달."""
+    main_prompt = load_prompt("main")
+    ctx = {
+        "subject_name": state["subject_name"],
+        "subject_position": state["subject_position"],
+        "hire_date": state["hire_date"],
+        "resignation_date": state["resignation_date"],
+        "analysis_start": state["analysis_start"],
+    }
+    print(f"\n  [Main Agent] STEP 1 수사 지침 추론 중...")
+    instructions = _supervisor_reason(
+        system_prompt=main_prompt["supervisor_system"],
+        user_prompt=main_prompt["step1_task"].format(**ctx),
+    )
+    print(f"  [Main Agent → STEP 1] {instructions[:80]}...")
+
+    task = {
+        "task": "baseline_profile 수립",
+        "subject_name": state["subject_name"],
+        "subject_position": state["subject_position"],
+        "analysis_start": state["analysis_start"],
+        "resignation_date": state["resignation_date"],
+        "source_label": state["source_label"],
+        "supervisor_instructions": instructions,
+    }
+    result = baseline_node(task)
+    result["supervisor_context"] = {"step1": instructions}
+    return result
 
 
 def parallel_node(state: InvestigationState) -> dict:
     """STEP 2 / STEP 3 / STEP 4 병렬 실행.
-    Main Supervisor가 각 Sub-Agent에 task를 동시에 전달하고 결과를 수집한다.
+    Main Agent가 baseline 결과를 보고 각 Sub-Agent에 줄 지침을 추론한 뒤 task로 전달한다.
     """
+    main_prompt = load_prompt("main")
+    baseline = state.get("baseline_profile", {})
+    ctx_common = {
+        "subject_name": state["subject_name"],
+        "subject_position": state["subject_position"],
+        "baseline_summary": json.dumps(baseline, ensure_ascii=False),
+        "analysis_start": state["analysis_start"],
+        "resignation_date": state["resignation_date"],
+        "source_label": state["source_label"],
+    }
+
+    print(f"\n  [Main Agent] STEP 2/3 수사 지침 추론 중 (병렬)...")
+    with ThreadPoolExecutor(max_workers=2) as pre:
+        f2 = pre.submit(_supervisor_reason,
+                        main_prompt["supervisor_system"],
+                        main_prompt["step2_task"].format(**ctx_common))
+        f3 = pre.submit(_supervisor_reason,
+                        main_prompt["supervisor_system"],
+                        main_prompt["step3_task"].format(**ctx_common))
+    instructions_step2 = f2.result()
+    instructions_step3 = f3.result()
+    print(f"  [Main Agent → STEP 2] {instructions_step2[:80]}...")
+    print(f"  [Main Agent → STEP 3] {instructions_step3[:80]}...")
+
+    task2 = {
+        "task": "유출 채널 탐지",
+        "subject_name": state["subject_name"],
+        "baseline_profile": baseline,
+        "analysis_start": state["analysis_start"],
+        "resignation_date": state["resignation_date"],
+        "supervisor_instructions": instructions_step2,
+    }
+    task3 = {
+        "task": "민감 파일 분류",
+        "subject_name": state["subject_name"],
+        "source_label": state["source_label"],
+        "supervisor_instructions": instructions_step3,
+    }
+    task4 = {
+        "task": "행동 패턴 이상 분석",
+        "subject_name": state["subject_name"],
+        "baseline_profile": baseline,
+        "analysis_start": state["analysis_start"],
+        "resignation_date": state["resignation_date"],
+        "supervisor_instructions": "STEP 4 — 추후 구현",
+    }
+
     results = {}
 
-    def run_step4(_state):
+    def run_step4(_):
         # STEP 4 (행동 패턴 분석) 플레이스홀더 — 추후 구현
         return {"behavior_anomalies": {}}
 
     with ThreadPoolExecutor(max_workers=3) as executor:
         futures = {
-            executor.submit(exfiltration_node, state): "step2",
-            executor.submit(sensitive_files_node, state): "step3",
-            executor.submit(run_step4, state): "step4",
+            executor.submit(exfiltration_node, task2): "step2",
+            executor.submit(sensitive_files_node, task3): "step3",
+            executor.submit(run_step4, task4): "step4",
         }
         for future in as_completed(futures):
             results.update(future.result())
 
+    prev = state.get("supervisor_context", {})
+    results["supervisor_context"] = {
+        **prev,
+        "step2": instructions_step2,
+        "step3": instructions_step3,
+    }
     return results
 
 
@@ -143,8 +236,37 @@ def cross_ref_node(state: InvestigationState) -> dict:
 
 
 def step5_node(state: InvestigationState) -> dict:
-    """STEP 5 Counter-evidence Sub-Agent 플레이스홀더 — 추후 구현."""
-    return {"verified_findings": []}
+    """STEP 5 Counter-evidence Sub-Agent — Main Agent가 교차 대조 결과를 보고 반증 지침을 추론."""
+    main_prompt = load_prompt("main")
+    ctx = {
+        "subject_name": state["subject_name"],
+        "cross_reference_summary": json.dumps(state.get("cross_reference", []), ensure_ascii=False),
+        "suspicious_count": len(state.get("suspicious_channels", [])),
+        "sensitive_count": len(state.get("sensitive_files", [])),
+    }
+    print(f"\n  [Main Agent] STEP 5 반증 검증 지침 추론 중...")
+    instructions = _supervisor_reason(
+        system_prompt=main_prompt["supervisor_system"],
+        user_prompt=main_prompt["step5_task"].format(**ctx),
+    )
+    print(f"  [Main Agent → STEP 5] {instructions[:80]}...")
+
+    task = {
+        "task": "의심 항목 반증 검증",
+        "subject_name": state["subject_name"],
+        "suspicious_channels": state.get("suspicious_channels", []),
+        "sensitive_files": state.get("sensitive_files", []),
+        "behavior_anomalies": state.get("behavior_anomalies", {}),
+        "cross_reference": state.get("cross_reference", []),
+        "supervisor_instructions": instructions,
+    }
+    # 플레이스홀더 — counter_evidence.py 구현 후 counter_evidence_node(task)로 교체
+    _ = task
+    prev = state.get("supervisor_context", {})
+    return {
+        "verified_findings": [],
+        "supervisor_context": {**prev, "step5": instructions},
+    }
 
 
 def scoring_node(state: InvestigationState) -> dict:
