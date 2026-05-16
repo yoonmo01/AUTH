@@ -1154,21 +1154,24 @@ def calculate_verdict(risk_score: int) -> str:
 ### 에이전트 프레임워크
 
 ```
-LangGraph (권장) 또는 Claude Agent SDK
-    └── 각 에이전트 = LangGraph 노드
+LangGraph (Supervisor 패턴)
+    └── Main Agent = Supervisor 노드 (각 Sub-Agent에 task 전달)
+    └── 각 Sub-Agent = LangGraph 노드 (계획 → 실행 → 반환)
     └── State = InvestigationState TypedDict
-    └── 병렬 실행 = LangGraph의 fan-out/fan-in 패턴
+    └── 병렬 실행 = STEP 2/3/4 동시 실행 (Main이 task 동시 전달)
 ```
 
 ### LLM 모델
 
 ```
-Claude claude-sonnet-4-6 (권장)
-    └── 긴 컨텍스트 처리 능력
+GPT-5.1 (langchain-openai)
     └── Tool use (function calling) 지원
     └── 한국어 처리 우수
+    └── 환경변수: OPENAI_API_KEY
 
-캡스톤 한계: 로컬 LLM(Ollama) 사용 시 성능 저하 가능
+초기화:
+from langchain_openai import ChatOpenAI
+llm = ChatOpenAI(model="gpt-5.1", temperature=0)
 ```
 
 ### Tool 구현 위치
