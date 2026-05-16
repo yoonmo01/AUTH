@@ -57,11 +57,12 @@ def get_email_history(user_name: str, date_from: str, date_to: str) -> str:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, subject, sender, recipients_to, sent_at, has_attachments
+                SELECT DISTINCT ON (subject, sender, sent_at)
+                  id, subject, sender, recipients_to, sent_at, has_attachments
                 FROM email_messages
                 WHERE sender ILIKE %s
                   AND sent_at BETWEEN %s AND %s
-                ORDER BY sent_at
+                ORDER BY subject, sender, sent_at
                 """,
                 (f"%{user_name}%", date_from, date_to),
             )
@@ -87,11 +88,12 @@ def get_file_access_history(user_name: str, date_from: str, date_to: str) -> str
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, filename, full_path, run_count, last_run_at
+                SELECT DISTINCT ON (filename, user_name, last_run_at)
+                  id, filename, full_path, run_count, last_run_at
                 FROM file_access_logs
                 WHERE user_name ILIKE %s
                   AND last_run_at BETWEEN %s AND %s
-                ORDER BY last_run_at
+                ORDER BY filename, user_name, last_run_at
                 """,
                 (f"%{user_name}%", date_from, date_to),
             )
@@ -125,23 +127,25 @@ def get_activity_events(
                 types_list = [t.strip() for t in event_types.split(",")]
                 cur.execute(
                     """
-                    SELECT id, event_type, event_at, actor, process_name, target_path, run_count
+                    SELECT DISTINCT ON (actor, event_type, event_at, target_path)
+                      id, event_type, event_at, actor, process_name, target_path, run_count
                     FROM activity_events
                     WHERE actor ILIKE %s
                       AND event_at BETWEEN %s AND %s
                       AND event_type = ANY(%s)
-                    ORDER BY event_at
+                    ORDER BY actor, event_type, event_at, target_path
                     """,
                     (f"%{user_name}%", date_from, date_to, types_list),
                 )
             else:
                 cur.execute(
                     """
-                    SELECT id, event_type, event_at, actor, process_name, target_path, run_count
+                    SELECT DISTINCT ON (actor, event_type, event_at, target_path)
+                      id, event_type, event_at, actor, process_name, target_path, run_count
                     FROM activity_events
                     WHERE actor ILIKE %s
                       AND event_at BETWEEN %s AND %s
-                    ORDER BY event_at
+                    ORDER BY actor, event_type, event_at, target_path
                     """,
                     (f"%{user_name}%", date_from, date_to),
                 )

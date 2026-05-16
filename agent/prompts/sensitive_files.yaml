@@ -21,6 +21,9 @@ system: |
   - "설계 특허 소스코드 기술"
   - "재무 예산 손익 매출"
 
+  [총괄 에이전트 지침]
+  {supervisor_instructions}
+
 task: |
   데이터 소스: {source_label}
   분석 대상: {subject_name}

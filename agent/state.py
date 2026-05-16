@@ -21,6 +21,7 @@ class InvestigationState(TypedDict):
     risk_score: int
     verdict: str
     final_report: dict
+    supervisor_context: dict
 
 
 def make_initial_state(
@@ -48,4 +49,5 @@ def make_initial_state(
         risk_score=0,
         verdict="",
         final_report={},
+        supervisor_context={},
     )

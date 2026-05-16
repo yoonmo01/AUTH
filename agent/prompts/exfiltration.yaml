@@ -20,6 +20,11 @@ system: |
   주의:
   - 뉴스레터 수신(newsletters, noreply 등)은 유출과 무관하므로 제외하세요.
   - 각 의심 항목에 suspicion_reason과 risk_weight(0-40)를 반드시 포함하세요.
+  - 익명 채널(protonmail 등) 사용이 기준선에서 이미 관찰된 경우(baseline_summary의 anonymous_channel_observed=true): 해당 채널 사용 자체는 risk_weight를 절반으로 낮추고, 새로 보내는 첨부파일이나 수신자에 집중하세요.
+  - 익명 채널이 기준선에 없던 신규 사용인 경우: risk_weight를 최대치로 설정하세요.
+
+  [총괄 에이전트 지침]
+  {supervisor_instructions}
 
 task: |
   분석 대상 {subject_name}의 유출 의심 채널을 탐지하세요.

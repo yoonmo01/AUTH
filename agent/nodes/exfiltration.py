@@ -45,7 +45,6 @@ from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 
 from agent.prompts import load_prompt
-from agent.state import InvestigationState
 
 # TODO: 아래 import 주석 해제 후 사용 (rdb_tools.py STEP 2 구현 완료 후)
 # from agent.tools.rdb_tools import (
@@ -56,16 +55,16 @@ from agent.state import InvestigationState
 # )
 
 
-def exfiltration_node(state: InvestigationState) -> dict:
-    """STEP 2: 유출 행위 분석 Sub-Agent 노드."""
+def exfiltration_node(task: dict) -> dict:
+    """STEP 2: 유출 행위 분석 Sub-Agent 노드. Main Agent로부터 task dict를 수신한다."""
 
     # TODO: 아래 블록 구현
     # prompt = load_prompt("exfiltration")
     # ctx = {
-    #     "subject_name": state["subject_name"],
-    #     "baseline_summary": json.dumps(state["baseline_profile"], ensure_ascii=False),
-    #     "analysis_start": state["analysis_start"],
-    #     "resignation_date": state["resignation_date"],
+    #     "subject_name": task["subject_name"],
+    #     "baseline_summary": json.dumps(task["baseline_profile"], ensure_ascii=False),
+    #     "analysis_start": task["analysis_start"],
+    #     "resignation_date": task["resignation_date"],
     # }
     # llm = ChatOpenAI(model=os.getenv("AGENT_MODEL", "gpt-5.1"), temperature=0)
     # tools = [
@@ -74,16 +73,12 @@ def exfiltration_node(state: InvestigationState) -> dict:
     #     get_messenger_logs,
     #     get_email_attachments,
     # ]
-    # agent = create_agent(
-    #     llm, tools,
-    #     system_prompt=prompt["system"].format(**ctx),
-    # )
+    # agent = create_agent(llm, tools, system_prompt=prompt["system"].format(**ctx))
     # result = agent.invoke({"messages": [("user", prompt["task"].format(**ctx))]})
     # raw = result["messages"][-1].content
-    # suspicious_channels = _parse_json_list(raw)
-    # return {"suspicious_channels": suspicious_channels}
+    # return {"suspicious_channels": _parse_json_list(raw)}
 
-    # 뼈대: rdb_tools.py STEP 2 구현 완료 전까지 빈 결과 반환
+    # 플레이스홀더: rdb_tools.py STEP 2 구현 완료 전까지 빈 결과 반환
     return {"suspicious_channels": []}
 
 

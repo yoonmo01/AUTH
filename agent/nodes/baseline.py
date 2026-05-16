@@ -16,7 +16,6 @@ from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 
 from agent.prompts import load_prompt
-from agent.state import InvestigationState
 from agent.tools.rdb_tools import (
     get_activity_events,
     get_email_history,
@@ -24,19 +23,20 @@ from agent.tools.rdb_tools import (
 )
 
 
-def baseline_node(state: InvestigationState) -> dict:
-    """STEP 1: 기준선 수립 Sub-Agent 노드."""
+def baseline_node(task: dict) -> dict:
+    """STEP 1: 기준선 수립 Sub-Agent 노드. Main Agent로부터 task dict를 수신한다."""
     prompt = load_prompt("baseline")
 
-    resign_dt = datetime.strptime(state["resignation_date"], "%Y-%m-%d")
+    resign_dt = datetime.strptime(task["resignation_date"], "%Y-%m-%d")
     baseline_end = (resign_dt - timedelta(days=30)).strftime("%Y-%m-%d")
 
     ctx = {
-        "subject_name": state["subject_name"],
-        "subject_position": state["subject_position"],
-        "analysis_start": state["analysis_start"],
+        "subject_name": task["subject_name"],
+        "subject_position": task["subject_position"],
+        "analysis_start": task["analysis_start"],
         "baseline_end": baseline_end,
-        "resignation_date": state["resignation_date"],
+        "resignation_date": task["resignation_date"],
+        "supervisor_instructions": task.get("supervisor_instructions", ""),
     }
 
     # run.py에서 AgentLogger 콜백이 주입된 경우 사용 (없으면 콜백 없이 실행)
@@ -46,7 +46,7 @@ def baseline_node(state: InvestigationState) -> dict:
     except ImportError:
         callbacks = []
 
-    print(f"\n  [STEP 1 시작] {state['subject_name']} 기준선 수립 중...")
+    print(f"\n  [STEP 1 시작] {task['subject_name']} 기준선 수립 중...")
 
     llm = ChatOpenAI(
         model=os.getenv("AGENT_MODEL", "gpt-5.1"),

@@ -1,4 +1,48 @@
-# Main Agent — 최종 수사 보고서 생성 프롬프트
+# Main Agent — Supervisor 추론 + 최종 수사 보고서 생성 프롬프트
+
+supervisor_system: |
+  당신은 디지털 포렌식 수사 총괄 에이전트입니다.
+  다음 분석 단계 에이전트에게 핵심 수사 지침을 제공합니다.
+  지침은 3문장 이내로 구체적으로 작성하세요.
+  데이터 조회 방법이 아니라 "무엇에 집중할지"를 지시하세요.
+
+step1_task: |
+  분석 대상: {subject_name} ({subject_position})
+  입사일: {hire_date} / 퇴사일: {resignation_date}
+  분석 시작: {analysis_start}
+
+  STEP 1(기준선 수립) 에이전트에게 줄 지침을 작성하세요.
+  - 이 직급에서 기준선으로 주목해야 할 행동 패턴은?
+  - 어떤 데이터 유형을 중점적으로 수집해야 하나?
+
+step2_task: |
+  분석 대상: {subject_name} ({subject_position})
+  기준선 결과: {baseline_summary}
+  분석 기간: {analysis_start} ~ {resignation_date}
+
+  STEP 2(유출 채널 탐지) 에이전트에게 줄 지침을 작성하세요.
+  - 기준선 결과를 바탕으로 어떤 이상 징후에 집중해야 하나?
+  - 이 직급/업무에서 외부 발신이 많을 수 있는 정상 이유는?
+
+step3_task: |
+  분석 대상: {subject_name} ({subject_position})
+  데이터 소스: {source_label}
+  기준선 결과: {baseline_summary}
+
+  STEP 3(민감 파일 분류) 에이전트에게 줄 지침을 작성하세요.
+  - 이 직급에서 취급할 가능성이 높은 민감 파일 유형은?
+  - 어떤 카테고리에 높은 가중치를 두어야 하나?
+
+step5_task: |
+  분석 대상: {subject_name}
+  교차 대조 결과: {cross_reference_summary}
+  의심 채널 수: {suspicious_count} / 민감 파일 수: {sensitive_count}
+
+  STEP 5(반증 검증) 에이전트에게 줄 지침을 작성하세요.
+  - 교차 대조에서 hit된 항목 중 정상으로 해석될 여지는?
+  - 어떤 증거를 추가로 확인해야 하나?
+
+
 
 system: |
   당신은 디지털 포렌식 전문가입니다.
