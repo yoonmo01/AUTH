@@ -52,17 +52,20 @@ def _cross_reference(suspicious_channels: list, sensitive_files: list) -> list:
 # 리스크 스코어링 — 설계 문서 가중치 테이블 그대로
 # ---------------------------------------------------------------------------
 
-def _calculate_risk_score(state: InvestigationState) -> int:
+def _calculate_risk_score(state: InvestigationState) -> tuple[int, dict]:
     score = 0
+    breakdown = {}
 
     # +40: 기밀 파일이 익명 채널로 발신됨 (교차 대조 hit)
     if state.get("cross_reference"):
         score += 40
+        breakdown["cross_ref"] = 40
 
     # +30: 은폐 시도 (deleted_files 존재)
     who = state.get("behavior_anomalies", {}).get("who_analysis", {})
     if who.get("deleted_files"):
         score += 30
+        breakdown["deleted_files"] = 30
 
     # +20: Baseline 대비 이상 행동 (anomaly_score 0.7 이상인 날짜 존재)
     timeline = (
@@ -72,6 +75,7 @@ def _calculate_risk_score(state: InvestigationState) -> int:
     )
     if any(d.get("anomaly_score", 0) >= 0.7 for d in timeline):
         score += 20
+        breakdown["anomaly"] = 20
 
     # +15: 익명 채널 사용만 (파일 매칭 없음)
     cross_email_ids = {r["email_id"] for r in state.get("cross_reference", [])}
@@ -80,16 +84,22 @@ def _calculate_risk_score(state: InvestigationState) -> int:
         if c.get("channel_type") in ("protonmail", "tmpbox")
         and c.get("email_id") not in cross_email_ids
     ]
-    score += len(anon_only) * 15
+    anon_score = len(anon_only) * 15
+    if anon_score:
+        score += anon_score
+        breakdown["anon_channel"] = anon_score
 
     # -20: Counter-evidence 반증 (verified=False 항목당)
     false_count = sum(
         1 for f in state.get("verified_findings", [])
         if not f.get("verified", True)
     )
-    score -= false_count * 20
+    counter_score = false_count * -20
+    if counter_score:
+        score += counter_score
+        breakdown["counter_evidence"] = counter_score
 
-    return max(0, score)
+    return max(0, score), breakdown
 
 
 def _calculate_verdict(risk_score: int) -> str:
@@ -271,9 +281,9 @@ def step5_node(state: InvestigationState) -> dict:
 
 def scoring_node(state: InvestigationState) -> dict:
     """Main Agent 리스크 스코어링 — 결정론적 코드."""
-    score = _calculate_risk_score(state)
+    score, breakdown = _calculate_risk_score(state)
     verdict = _calculate_verdict(score)
-    return {"risk_score": score, "verdict": verdict}
+    return {"risk_score": score, "verdict": verdict, "risk_breakdown": breakdown}
 
 
 def report_node(state: InvestigationState) -> dict:
@@ -284,6 +294,7 @@ def report_node(state: InvestigationState) -> dict:
         temperature=0,
     )
 
+    verified = state.get("verified_findings", [])
     ctx = {
         "subject_name": state["subject_name"],
         "subject_position": state["subject_position"],
@@ -292,10 +303,17 @@ def report_node(state: InvestigationState) -> dict:
         "analysis_start": state["analysis_start"],
         "verdict": state["verdict"],
         "risk_score": state["risk_score"],
+        "risk_breakdown": json.dumps(state.get("risk_breakdown", {}), ensure_ascii=False),
         "baseline_profile": json.dumps(state.get("baseline_profile", {}), ensure_ascii=False),
+        "suspicious_channels": json.dumps(state.get("suspicious_channels", []), ensure_ascii=False),
+        "sensitive_files": json.dumps(state.get("sensitive_files", []), ensure_ascii=False),
         "cross_reference": json.dumps(state.get("cross_reference", []), ensure_ascii=False),
-        "verified_findings": json.dumps(state.get("verified_findings", []), ensure_ascii=False),
+        "verified_findings": json.dumps(verified, ensure_ascii=False),
         "behavior_anomalies": json.dumps(state.get("behavior_anomalies", {}), ensure_ascii=False),
+        "emails_analyzed": len(state.get("suspicious_channels", [])),
+        "files_analyzed": len(state.get("sensitive_files", [])),
+        "anomalies_found": len(state.get("cross_reference", [])),
+        "false_positives_removed": sum(1 for f in verified if not f.get("verified", True)),
     }
 
     result = llm.invoke([
