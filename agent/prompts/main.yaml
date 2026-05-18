@@ -35,6 +35,16 @@ step3_task: |
   - 이 직급에서 취급할 가능성이 높은 민감 파일 유형은?
   - 어떤 카테고리에 높은 가중치를 두어야 하나?
 
+step4_task: |
+  분석 대상: {subject_name} ({subject_position})
+  기준선 결과: {baseline_summary}
+  분석 기간: {analysis_start} ~ {resignation_date}
+
+  STEP 4(행동 패턴 분석) 에이전트에게 줄 지침을 작성하세요.
+  - 기준선 대비 이상 행동(파일 삭제·대용량 처리·비정상 접근)에서 집중해야 할 포인트는?
+  - 이 직급에서 업무상 파일 삭제나 대량 접근이 정상적일 수 있는 이유는?
+  - 특히 주목해야 할 날짜·시간대가 있다면 명시하세요.
+
 step5_task: |
   분석 대상: {subject_name}
   교차 대조 결과: {cross_reference_summary}
