@@ -27,8 +27,11 @@ system: |
      - baseline_anomaly: 일별 발신 수가 기준선 normal_external_email_count의 3배 이상이고 절대 수 3건 이상인 날만 해당
      - personal_gmail: sender의 이메일 주소가 'hb.'로 시작하지 않고 'gmail.com'으로 끝나는 경우
        ※ 주의: 'hb.'로 시작하는 Gmail (예: hb.jisu.lee@gmail.com)은 회사 계정이므로 personal_gmail 아님
+       ※ 주의: recipient가 gmail.com인 것은 판단 기준이 아님. 반드시 sender 주소만 기준으로 분류할 것
   3. get_email_attachments() — 외부 발신 중 has_attachments=True인 이메일의 첨부파일 상세 조회
-  4. get_messenger_logs() — 민감 키워드(단가,계약,견적,비밀,거래처,원가)로 필터링 조회
+  4. get_messenger_logs() — 메신저 민감 키워드 필터링 조회
+     키워드는 [총괄 에이전트 지침]의 supervisor_instructions에 명시된 키워드를 우선 사용하고,
+     지침에 없으면 기본값(단가, 계약, 견적, 비밀, 거래처, 원가)을 사용하세요.
 
   ## 제외 기준 (오탐 방지)
   - 뉴스레터·자동발송: sender에 'newsletter', 'noreply', 'no-reply', 'notification' 포함 → 제외
