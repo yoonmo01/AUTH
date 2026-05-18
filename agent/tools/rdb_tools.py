@@ -103,6 +103,37 @@ def get_file_access_history(user_name: str, date_from: str, date_to: str) -> str
 
 
 @tool
+def get_deleted_files(user_name: str, date_from: str, date_to: str) -> str:
+    """deleted_files 테이블에서 특정 사용자의 기간 내 삭제된 파일 목록을 조회합니다 ($Recycle.Bin 기반).
+
+    Args:
+        user_name: 조회할 사용자 이름
+        date_from: 시작 날짜 (YYYY-MM-DD)
+        date_to: 종료 날짜 (YYYY-MM-DD)
+
+    Returns:
+        삭제 파일 목록 JSON 문자열 (id, original_path, original_filename, extension, file_size_bytes, deleted_at)
+    """
+    conn = get_pg_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, original_path, original_filename, extension,
+                       file_size_bytes, deleted_at
+                FROM deleted_files
+                WHERE user_name ILIKE %s
+                  AND deleted_at BETWEEN %s AND %s
+                ORDER BY deleted_at
+                """,
+                (f"%{user_name}%", date_from, date_to),
+            )
+            return _fetchall_as_json(cur)
+    finally:
+        conn.close()
+
+
+@tool
 def get_activity_events(
     user_name: str,
     date_from: str,

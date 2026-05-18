@@ -16,6 +16,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 
 from agent.nodes.baseline import baseline_node
+from agent.nodes.behavior import behavior_node
 from agent.nodes.exfiltration import exfiltration_node
 from agent.nodes.sensitive_files import sensitive_files_node
 from agent.prompts import load_prompt
@@ -176,18 +177,23 @@ def parallel_node(state: InvestigationState) -> dict:
         "source_label": state["source_label"],
     }
 
-    print(f"\n  [Main Agent] STEP 2/3 수사 지침 추론 중 (병렬)...")
-    with ThreadPoolExecutor(max_workers=2) as pre:
+    print(f"\n  [Main Agent] STEP 2/3/4 수사 지침 추론 중 (병렬)...")
+    with ThreadPoolExecutor(max_workers=3) as pre:
         f2 = pre.submit(_supervisor_reason,
                         main_prompt["supervisor_system"],
                         main_prompt["step2_task"].format(**ctx_common))
         f3 = pre.submit(_supervisor_reason,
                         main_prompt["supervisor_system"],
                         main_prompt["step3_task"].format(**ctx_common))
+        f4 = pre.submit(_supervisor_reason,
+                        main_prompt["supervisor_system"],
+                        main_prompt["step4_task"].format(**ctx_common))
     instructions_step2 = f2.result()
     instructions_step3 = f3.result()
+    instructions_step4 = f4.result()
     print(f"  [Main Agent → STEP 2] {instructions_step2[:80]}...")
     print(f"  [Main Agent → STEP 3] {instructions_step3[:80]}...")
+    print(f"  [Main Agent → STEP 4] {instructions_step4[:80]}...")
 
     task2 = {
         "task": "유출 채널 탐지",
@@ -209,20 +215,16 @@ def parallel_node(state: InvestigationState) -> dict:
         "baseline_profile": baseline,
         "analysis_start": state["analysis_start"],
         "resignation_date": state["resignation_date"],
-        "supervisor_instructions": "STEP 4 — 추후 구현",
+        "supervisor_instructions": instructions_step4,
     }
 
     results = {}
-
-    def run_step4(_):
-        # STEP 4 (행동 패턴 분석) 플레이스홀더 — 추후 구현
-        return {"behavior_anomalies": {}}
 
     with ThreadPoolExecutor(max_workers=3) as executor:
         futures = {
             executor.submit(exfiltration_node, task2): "step2",
             executor.submit(sensitive_files_node, task3): "step3",
-            executor.submit(run_step4, task4): "step4",
+            executor.submit(behavior_node, task4): "step4",
         }
         for future in as_completed(futures):
             results.update(future.result())
@@ -232,6 +234,7 @@ def parallel_node(state: InvestigationState) -> dict:
         **prev,
         "step2": instructions_step2,
         "step3": instructions_step3,
+        "step4": instructions_step4,
     }
     return results
 
