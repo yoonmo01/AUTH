@@ -16,7 +16,7 @@ services:
     restart: unless-stopped
 
   qdrant:
-    image: qdrant/qdrant:v1.9.2
+    image: qdrant/qdrant:v1.13.0
     container_name: hyena_clean_qdrant
     profiles: ["ai"]
     ports:
