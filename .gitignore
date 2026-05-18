@@ -217,3 +217,7 @@ extracted_email_attachments/
 converted_documents/
 *.log
 *.zip
+
+# 개인파일
+CLAUDE_d.md
+CLAUDE_F.md
