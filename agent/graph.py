@@ -16,6 +16,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 
 from agent.nodes.baseline import baseline_node
+from agent.nodes.behavior import behavior_node
 from agent.nodes.exfiltration import exfiltration_node
 from agent.nodes.sensitive_files import sensitive_files_node
 from agent.prompts import load_prompt
@@ -52,17 +53,20 @@ def _cross_reference(suspicious_channels: list, sensitive_files: list) -> list:
 # 리스크 스코어링 — 설계 문서 가중치 테이블 그대로
 # ---------------------------------------------------------------------------
 
-def _calculate_risk_score(state: InvestigationState) -> int:
+def _calculate_risk_score(state: InvestigationState) -> tuple[int, dict]:
     score = 0
+    breakdown = {}
 
     # +40: 기밀 파일이 익명 채널로 발신됨 (교차 대조 hit)
     if state.get("cross_reference"):
         score += 40
+        breakdown["cross_ref"] = 40
 
     # +30: 은폐 시도 (deleted_files 존재)
     who = state.get("behavior_anomalies", {}).get("who_analysis", {})
     if who.get("deleted_files"):
         score += 30
+        breakdown["deleted_files"] = 30
 
     # +20: Baseline 대비 이상 행동 (anomaly_score 0.7 이상인 날짜 존재)
     timeline = (
@@ -72,6 +76,7 @@ def _calculate_risk_score(state: InvestigationState) -> int:
     )
     if any(d.get("anomaly_score", 0) >= 0.7 for d in timeline):
         score += 20
+        breakdown["anomaly"] = 20
 
     # +15: 익명 채널 사용만 (파일 매칭 없음)
     cross_email_ids = {r["email_id"] for r in state.get("cross_reference", [])}
@@ -80,16 +85,22 @@ def _calculate_risk_score(state: InvestigationState) -> int:
         if c.get("channel_type") in ("protonmail", "tmpbox")
         and c.get("email_id") not in cross_email_ids
     ]
-    score += len(anon_only) * 15
+    anon_score = len(anon_only) * 15
+    if anon_score:
+        score += anon_score
+        breakdown["anon_channel"] = anon_score
 
     # -20: Counter-evidence 반증 (verified=False 항목당)
     false_count = sum(
         1 for f in state.get("verified_findings", [])
         if not f.get("verified", True)
     )
-    score -= false_count * 20
+    counter_score = false_count * -20
+    if counter_score:
+        score += counter_score
+        breakdown["counter_evidence"] = counter_score
 
-    return max(0, score)
+    return max(0, score), breakdown
 
 
 def _calculate_verdict(risk_score: int) -> str:
@@ -166,18 +177,23 @@ def parallel_node(state: InvestigationState) -> dict:
         "source_label": state["source_label"],
     }
 
-    print(f"\n  [Main Agent] STEP 2/3 수사 지침 추론 중 (병렬)...")
-    with ThreadPoolExecutor(max_workers=2) as pre:
+    print(f"\n  [Main Agent] STEP 2/3/4 수사 지침 추론 중 (병렬)...")
+    with ThreadPoolExecutor(max_workers=3) as pre:
         f2 = pre.submit(_supervisor_reason,
                         main_prompt["supervisor_system"],
                         main_prompt["step2_task"].format(**ctx_common))
         f3 = pre.submit(_supervisor_reason,
                         main_prompt["supervisor_system"],
                         main_prompt["step3_task"].format(**ctx_common))
+        f4 = pre.submit(_supervisor_reason,
+                        main_prompt["supervisor_system"],
+                        main_prompt["step4_task"].format(**ctx_common))
     instructions_step2 = f2.result()
     instructions_step3 = f3.result()
+    instructions_step4 = f4.result()
     print(f"  [Main Agent → STEP 2] {instructions_step2[:80]}...")
     print(f"  [Main Agent → STEP 3] {instructions_step3[:80]}...")
+    print(f"  [Main Agent → STEP 4] {instructions_step4[:80]}...")
 
     task2 = {
         "task": "유출 채널 탐지",
@@ -199,20 +215,16 @@ def parallel_node(state: InvestigationState) -> dict:
         "baseline_profile": baseline,
         "analysis_start": state["analysis_start"],
         "resignation_date": state["resignation_date"],
-        "supervisor_instructions": "STEP 4 — 추후 구현",
+        "supervisor_instructions": instructions_step4,
     }
 
     results = {}
-
-    def run_step4(_):
-        # STEP 4 (행동 패턴 분석) 플레이스홀더 — 추후 구현
-        return {"behavior_anomalies": {}}
 
     with ThreadPoolExecutor(max_workers=3) as executor:
         futures = {
             executor.submit(exfiltration_node, task2): "step2",
             executor.submit(sensitive_files_node, task3): "step3",
-            executor.submit(run_step4, task4): "step4",
+            executor.submit(behavior_node, task4): "step4",
         }
         for future in as_completed(futures):
             results.update(future.result())
@@ -222,6 +234,7 @@ def parallel_node(state: InvestigationState) -> dict:
         **prev,
         "step2": instructions_step2,
         "step3": instructions_step3,
+        "step4": instructions_step4,
     }
     return results
 
@@ -271,9 +284,9 @@ def step5_node(state: InvestigationState) -> dict:
 
 def scoring_node(state: InvestigationState) -> dict:
     """Main Agent 리스크 스코어링 — 결정론적 코드."""
-    score = _calculate_risk_score(state)
+    score, breakdown = _calculate_risk_score(state)
     verdict = _calculate_verdict(score)
-    return {"risk_score": score, "verdict": verdict}
+    return {"risk_score": score, "verdict": verdict, "risk_breakdown": breakdown}
 
 
 def report_node(state: InvestigationState) -> dict:
@@ -284,6 +297,7 @@ def report_node(state: InvestigationState) -> dict:
         temperature=0,
     )
 
+    verified = state.get("verified_findings", [])
     ctx = {
         "subject_name": state["subject_name"],
         "subject_position": state["subject_position"],
@@ -292,10 +306,17 @@ def report_node(state: InvestigationState) -> dict:
         "analysis_start": state["analysis_start"],
         "verdict": state["verdict"],
         "risk_score": state["risk_score"],
+        "risk_breakdown": json.dumps(state.get("risk_breakdown", {}), ensure_ascii=False),
         "baseline_profile": json.dumps(state.get("baseline_profile", {}), ensure_ascii=False),
+        "suspicious_channels": json.dumps(state.get("suspicious_channels", []), ensure_ascii=False),
+        "sensitive_files": json.dumps(state.get("sensitive_files", []), ensure_ascii=False),
         "cross_reference": json.dumps(state.get("cross_reference", []), ensure_ascii=False),
-        "verified_findings": json.dumps(state.get("verified_findings", []), ensure_ascii=False),
+        "verified_findings": json.dumps(verified, ensure_ascii=False),
         "behavior_anomalies": json.dumps(state.get("behavior_anomalies", {}), ensure_ascii=False),
+        "emails_analyzed": len(state.get("suspicious_channels", [])),
+        "files_analyzed": len(state.get("sensitive_files", [])),
+        "anomalies_found": len(state.get("cross_reference", [])),
+        "false_positives_removed": sum(1 for f in verified if not f.get("verified", True)),
     }
 
     result = llm.invoke([
