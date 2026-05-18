@@ -56,20 +56,23 @@ def search_vector_db(query_text: str, top_k: int = 50, threshold: float = 0.75) 
         threshold: 최소 유사도 점수 (기본값 0.75)
 
     Returns:
-        유사 청크 목록 JSON 문자열 (file_id, chunk_text, score, metadata 포함)
+        유사 청크 목록 JSON 문자열 (file_id, score, metadata 포함)
     """
-    # TODO: 동료 구현
-    # 힌트:
-    # client = get_qdrant_client()
-    # query_vector = embed(query_text)
-    # results = client.search(
-    #     collection_name=COLLECTION,
-    #     query_vector=query_vector,
-    #     limit=top_k,
-    #     score_threshold=threshold,
-    # )
-    # → results[i].payload 에서 file_id, chunk_text 등 추출
-    raise NotImplementedError("search_vector_db 구현 필요 — vector_tools.py 참고")
+    import json
+    client = get_qdrant_client()
+    query_vector = embed(query_text)
+    response = client.query_points(
+        collection_name=COLLECTION,
+        query=query_vector,
+        limit=top_k,
+        score_threshold=threshold,
+    )
+    output = []
+    for hit in response.points:
+        item = {"score": round(hit.score, 4)}
+        item.update(hit.payload or {})
+        output.append(item)
+    return json.dumps(output, ensure_ascii=False, default=str)
 
 
 @tool
@@ -82,12 +85,15 @@ def get_chunk_by_file(file_id: str) -> str:
     Returns:
         청크 목록 JSON 문자열
     """
-    # TODO: 동료 구현
-    # 힌트:
-    # client = get_qdrant_client()
-    # results = client.scroll(
-    #     collection_name=COLLECTION,
-    #     scroll_filter=Filter(must=[FieldCondition(key="file_id", match=MatchValue(value=file_id))]),
-    #     limit=100,
-    # )
-    raise NotImplementedError("get_chunk_by_file 구현 필요 — vector_tools.py 참고")
+    import json
+    from qdrant_client.http.models import FieldCondition, Filter, MatchValue
+
+    client = get_qdrant_client()
+    records, _ = client.scroll(
+        collection_name=COLLECTION,
+        scroll_filter=Filter(must=[FieldCondition(key="file_id", match=MatchValue(value=file_id))]),
+        limit=100,
+        with_payload=True,
+    )
+    output = [r.payload for r in records]
+    return json.dumps(output, ensure_ascii=False, default=str)
