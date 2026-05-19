@@ -69,7 +69,7 @@ def copy_and_run(sql: str, flags: list[str] | None = None, prefix: str = "etl") 
         subprocess.run(["docker", "cp", tmp, f"{CONTAINER}:{container_sql}"],
                        check=True, capture_output=True)
         r = subprocess.run(
-            ["docker", "exec", CONTAINER,
+            ["docker", "exec", "-e", "PGCLIENTENCODING=UTF8", CONTAINER,
              "psql", "-U", PG_USER, "-d", PG_DB] + flags + ["-f", container_sql],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
