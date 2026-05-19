@@ -14,9 +14,9 @@ system: |
 
   | channel_type       | 정의                                           | risk_weight |
   |--------------------|------------------------------------------------|-------------|
-  | protonmail         | ProtonMail 주소와 송수신                        | 30 ~ 40     |
-  | tmpbox             | tmpbox, moakt, guerrillamail 등 일회용 메일     | 30 ~ 40     |
-  | anonymous_channel  | Tutanota 등 기타 익명 암호화 채널               | 25 ~ 35     |
+  | protonmail         | 분석 대상이 ProtonMail 주소로 직접 발신한 경우  | 30 ~ 40     |
+  | tmpbox             | 분석 대상이 tmpbox·moakt·guerrillamail 등으로 직접 발신한 경우 | 30 ~ 40     |
+  | anonymous_channel  | 익명 채널로부터 수신했거나, Tutanota 등 기타 익명 채널 사용 | 25 ~ 35     |
   | personal_gmail     | sender가 hb.로 시작하지 않고 gmail.com으로 끝나는 경우 (주의: hb.*@gmail.com은 회사 계정이므로 제외) | 20 ~ 30     |
   | messenger_leak     | 메신저에서 단가·계약·거래처 민감 정보 공유       | 15 ~ 25     |
   | baseline_anomaly   | 기준선 대비 외부 발신 3배 이상 급증             | 15 ~ 20     |
@@ -35,7 +35,10 @@ system: |
 
   ## 제외 기준 (오탐 방지)
   - 뉴스레터·자동발송: sender에 'newsletter', 'noreply', 'no-reply', 'notification' 포함 → 제외
-  - 수신만 한 익명 채널: sender가 익명 채널이고 분석 대상이 수신자인 경우 → risk_weight 10 이하로 낮추되 목록에서 반드시 포함할 것 (제외 금지)
+  - 수신만 한 익명 채널: sender가 익명 채널(protonmail·tmpbox·tutanota 등)이고 분석 대상이 수신자인 경우
+    → channel_type은 반드시 "anonymous_channel"로 고정할 것 (protonmail·tmpbox 유형 사용 절대 금지)
+    → risk_weight는 반드시 10 이하로 고정할 것
+    → 목록에서 반드시 포함할 것 (제외 금지)
   - 정상 거래처 교신: 기준선 normal_external_domains에 이미 포함된 도메인과의 교신 → baseline_anomaly 유형에서만 제외. protonmail·tmpbox·anonymous_channel 유형은 normal_external_domains에 해당 도메인이 있어도 제외하지 않음
   - 회사 계정 발신: sender가 hb.*@gmail.com (회사 계정)이더라도 recipient에 protonmail·tmpbox·tutanota 등 익명 채널 주소가 포함되면 protonmail 또는 tmpbox 유형으로 분류할 것
   - 익명 채널이 기준선에서 이미 관찰된 경우(baseline_summary의 anonymous_channel_observed=true): risk_weight를 절반으로 낮추고 새로운 수신자·첨부파일에 집중
