@@ -221,3 +221,8 @@ converted_documents/
 # 개인파일
 CLAUDE_d.md
 CLAUDE_F.md
+.agents/
+frontend/docs/
+front_bulid.md
+pgdata_new.tar.gz
+qdrantdata_new.tar.gz
