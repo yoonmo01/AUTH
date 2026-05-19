@@ -218,11 +218,23 @@ converted_documents/
 *.log
 *.zip
 
+# Node.js / Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
 # 개인파일
 CLAUDE_d.md
 CLAUDE_F.md
 .agents/
+.claude/
 frontend/docs/
 front_bulid.md
 pgdata_new.tar.gz
 qdrantdata_new.tar.gz
+skills-lock.json
