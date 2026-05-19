@@ -17,6 +17,7 @@ from langgraph.graph import END, StateGraph
 
 from agent.nodes.baseline import baseline_node
 from agent.nodes.behavior import behavior_node
+from agent.nodes.counter_evidence import counter_evidence_node
 from agent.nodes.exfiltration import exfiltration_node
 from agent.nodes.sensitive_files import sensitive_files_node
 from agent.prompts import load_prompt
@@ -34,7 +35,7 @@ def _cross_reference(suspicious_channels: list, sensitive_files: list) -> list:
 
     for channel in suspicious_channels:
         for attachment in channel.get("attachments", []):
-            fname = attachment.get("filename", "")
+            fname = attachment.get("filename", "") or attachment.get("attachment_name", "")
             if fname.lower() in sensitive_filenames:
                 results.append({
                     "email_id": channel.get("email_id"),
@@ -267,17 +268,18 @@ def step5_node(state: InvestigationState) -> dict:
     task = {
         "task": "의심 항목 반증 검증",
         "subject_name": state["subject_name"],
+        "analysis_start": state.get("analysis_start", ""),
+        "resignation_date": state.get("resignation_date", ""),
         "suspicious_channels": state.get("suspicious_channels", []),
         "sensitive_files": state.get("sensitive_files", []),
         "behavior_anomalies": state.get("behavior_anomalies", {}),
         "cross_reference": state.get("cross_reference", []),
         "supervisor_instructions": instructions,
     }
-    # 플레이스홀더 — counter_evidence.py 구현 후 counter_evidence_node(task)로 교체
-    _ = task
+    result = counter_evidence_node(task)
     prev = state.get("supervisor_context", {})
     return {
-        "verified_findings": [],
+        "verified_findings": result.get("verified_findings", []),
         "supervisor_context": {**prev, "step5": instructions},
     }
 
