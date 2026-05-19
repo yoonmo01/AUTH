@@ -1,5 +1,9 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchSummary } from './api/client'
+import { useDebouncedValue } from './hooks/useDebouncedValue'
+import { TreeViewer, type TreeSelected } from './components/TreeViewer'
+import { ResultViewer } from './components/ResultViewer'
 import type { Summary } from './types'
 
 const nf = new Intl.NumberFormat('en-US')
@@ -67,6 +71,10 @@ function App() {
     queryFn: fetchSummary,
   })
 
+  const [selected, setSelected] = useState<TreeSelected>('all')
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 300)
+
   const status = isError ? 'bad' : isLoading ? 'warn' : 'ok'
   const statusText = isError
     ? 'DB · OFFLINE'
@@ -116,10 +124,15 @@ function App() {
 
       <main className="grid">
         <aside className="col col--tree">
-          <Panel tab="TREE · 데이터 소스" hint="증거 트리 — S2에서 구현" />
+          <TreeViewer selected={selected} onSelect={setSelected} />
         </aside>
         <section className="col col--work">
-          <Panel tab="RESULT · 결과 표" hint="파일 / 이메일 / Findings — S2·S3" />
+          <ResultViewer
+            category={selected}
+            query={debouncedSearch}
+            search={search}
+            onSearch={setSearch}
+          />
           <Panel
             tab=""
             tabs={['파일 본문', '네트워크', '타임라인', '판정']}
@@ -131,7 +144,7 @@ function App() {
       <footer className="statusbar">
         <span className="statusbar__tag">HYENA INVESTIGATION CONSOLE</span>
         <span className="statusbar__msg">{footMsg}</span>
-        <span className="statusbar__ver">v0.1 · SLICE&nbsp;1</span>
+        <span className="statusbar__ver">v0.1 · SLICE&nbsp;2</span>
       </footer>
     </div>
   )
