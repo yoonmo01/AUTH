@@ -71,7 +71,7 @@ function App() {
     queryFn: fetchSummary,
   })
 
-  const [selected, setSelected] = useState<TreeSelected>('all')
+  const [selected, setSelected] = useState<TreeSelected>({ kind: 'all' })
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, 300)
 
@@ -128,7 +128,7 @@ function App() {
         </aside>
         <section className="col col--work">
           <ResultViewer
-            category={selected}
+            selected={selected}
             query={debouncedSearch}
             search={search}
             onSearch={setSearch}

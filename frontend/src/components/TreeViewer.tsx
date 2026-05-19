@@ -3,11 +3,48 @@ import { fetchSummary } from '../api/client'
 import { categoryLabel } from '../categories'
 import type { Summary, FileCategory } from '../types'
 
-export type TreeSelected = FileCategory | 'all'
+export type TreeSelected =
+  | { kind: 'all' }
+  | { kind: 'category'; category: FileCategory }
+  | { kind: 'emails' }
+  | { kind: 'entities' }
+
+export function sameSelection(a: TreeSelected, b: TreeSelected): boolean {
+  if (a.kind !== b.kind) return false
+  if (a.kind === 'category' && b.kind === 'category') return a.category === b.category
+  return true
+}
 
 type Props = {
   selected: TreeSelected
   onSelect: (s: TreeSelected) => void
+}
+
+type NodeProps = {
+  on: boolean
+  mark: string
+  label: string
+  count?: number
+  root?: boolean
+  onClick: () => void
+}
+
+function TreeNode({ on, mark, label, count, root, onClick }: NodeProps) {
+  return (
+    <button
+      type="button"
+      className={`tree__node${root ? ' tree__node--root' : ''}${on ? ' is-on' : ''}`}
+      onClick={onClick}
+      role="treeitem"
+      aria-selected={on}
+    >
+      <span className="tree__mark" aria-hidden="true">{mark}</span>
+      <span className="tree__label">{label}</span>
+      {count !== undefined && (
+        <span className="tree__count">{count.toLocaleString()}</span>
+      )}
+    </button>
+  )
 }
 
 export function TreeViewer({ selected, onSelect }: Props) {
@@ -22,7 +59,7 @@ export function TreeViewer({ selected, onSelect }: Props) {
     counts.set(row.category, (counts.get(row.category) ?? 0) + (row.cnt ?? 0))
   }
   const categories = [...counts.entries()]
-  const total = categories.reduce((n, [, c]) => n + c, 0)
+  const fileTotal = categories.reduce((n, [, c]) => n + c, 0)
 
   return (
     <div className="zone">
@@ -33,37 +70,53 @@ export function TreeViewer({ selected, onSelect }: Props) {
         {!isLoading && !isError && (
           <ul className="tree" role="tree">
             <li>
-              <button
-                type="button"
-                className={`tree__node tree__node--root${selected === 'all' ? ' is-on' : ''}`}
-                onClick={() => onSelect('all')}
-                role="treeitem"
-                aria-selected={selected === 'all'}
-              >
-                <span className="tree__mark" aria-hidden="true">▣</span>
-                <span className="tree__label">전체 파일</span>
-                <span className="tree__count">{total.toLocaleString()}</span>
-              </button>
+              <TreeNode
+                root
+                mark="▣"
+                label="전체 파일"
+                count={fileTotal}
+                on={selected.kind === 'all'}
+                onClick={() => onSelect({ kind: 'all' })}
+              />
               <ul className="tree__children">
                 {categories.map(([cat, cnt]) => {
-                  const on = selected === cat
+                  const on =
+                    selected.kind === 'category' && selected.category === cat
                   return (
                     <li key={cat}>
-                      <button
-                        type="button"
-                        className={`tree__node${on ? ' is-on' : ''}`}
-                        onClick={() => onSelect(cat as FileCategory)}
-                        role="treeitem"
-                        aria-selected={on}
-                      >
-                        <span className="tree__mark" aria-hidden="true">▸</span>
-                        <span className="tree__label">{categoryLabel(cat)}</span>
-                        <span className="tree__count">{cnt.toLocaleString()}</span>
-                      </button>
+                      <TreeNode
+                        mark="▸"
+                        label={categoryLabel(cat)}
+                        count={cnt}
+                        on={on}
+                        onClick={() =>
+                          onSelect({ kind: 'category', category: cat as FileCategory })
+                        }
+                      />
                     </li>
                   )
                 })}
               </ul>
+            </li>
+            <li>
+              <TreeNode
+                root
+                mark="✉"
+                label="Email Messages"
+                count={data?.emails}
+                on={selected.kind === 'emails'}
+                onClick={() => onSelect({ kind: 'emails' })}
+              />
+            </li>
+            <li>
+              <TreeNode
+                root
+                mark="◈"
+                label="Entities"
+                count={data?.entities}
+                on={selected.kind === 'entities'}
+                onClick={() => onSelect({ kind: 'entities' })}
+              />
             </li>
           </ul>
         )}
