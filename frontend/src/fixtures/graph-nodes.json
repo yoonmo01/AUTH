@@ -1,0 +1,8 @@
+[
+  { "node_id": "u-1", "node_type": "user", "label": "김민수 (구매팀)", "properties": { "role": "purchasing" } },
+  { "node_id": "f-1001", "node_type": "file", "label": "2026_1분기_공급사_단가표.xlsx", "properties": { "category": "document" } },
+  { "node_id": "e-2001", "node_type": "email", "label": "[전달] 1분기 공급사 단가표 파일", "properties": { "direction": "outbound" } },
+  { "node_id": "r-1", "node_type": "external_recipient", "label": "minsoo.private@gmail.com", "properties": { "external": true } },
+  { "node_id": "ent-03", "node_type": "entity", "label": "고려정밀", "properties": { "entity_type": "org" } },
+  { "node_id": "ev-1", "node_type": "event", "label": "USB 연결", "properties": { "event_type": "usb_connect" } }
+]

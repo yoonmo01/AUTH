@@ -7,15 +7,19 @@ __pycache__/
 *.so
 
 # Distribution / packaging
+# build/ lib/ lib64/ anchored to repo root (/) — the unanchored Python
+# template patterns otherwise match ANY such dir at any depth and silently
+# swallowed JS source like frontend/src/lib/. git cannot re-include files
+# under an excluded dir, so anchoring (not negation) is the correct fix.
 .Python
-build/
+/build/
 develop-eggs/
 dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -218,3 +222,24 @@ converted_documents/
 *.log
 *.zip
 .mcp.json
+
+# Node.js / Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 개인파일
+CLAUDE_d.md
+CLAUDE_F.md
+.agents/
+.claude/
+frontend/docs/
+front_bulid.md
+pgdata_new.tar.gz
+qdrantdata_new.tar.gz
+skills-lock.json
