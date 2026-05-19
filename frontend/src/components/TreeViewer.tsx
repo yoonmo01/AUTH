@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { fetchSummary } from '../api/client'
-import { categoryLabel } from '../lib/categories'
+import { categoryLabel } from '../categories'
 import type { Summary, FileCategory } from '../types'
 
 export type TreeSelected = FileCategory | 'all'
