@@ -4,7 +4,8 @@ import { fetchSummary } from './api/client'
 import { useDebouncedValue } from './hooks/useDebouncedValue'
 import { TreeViewer, type TreeSelected } from './components/TreeViewer'
 import { ResultViewer } from './components/ResultViewer'
-import type { Summary } from './types'
+import { ContentViewer } from './components/ContentViewer'
+import type { Summary, FileRecord } from './types'
 
 const nf = new Intl.NumberFormat('en-US')
 
@@ -33,38 +34,6 @@ function Readout({ label, value, loading, accent }: ReadoutProps) {
   )
 }
 
-type PanelProps = {
-  tab: string
-  hint: string
-  tabs?: string[]
-}
-
-function Panel({ tab, hint, tabs }: PanelProps) {
-  return (
-    <div className="zone">
-      {tabs ? (
-        <div className="zone__tabs">
-          {tabs.map((t, i) => (
-            <span key={t} className={i === 0 ? 't t--on' : 't'}>
-              {t}
-            </span>
-          ))}
-        </div>
-      ) : (
-        <div className="zone__tab">{tab}</div>
-      )}
-      <div className="zone__body">
-        <div className="ph">
-          <span className="ph__mark" aria-hidden="true">
-            ◇
-          </span>
-          <span className="ph__txt">{hint}</span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function App() {
   const { data, isLoading, isError } = useQuery<Summary>({
     queryKey: ['summary'],
@@ -74,6 +43,7 @@ function App() {
   const [selected, setSelected] = useState<TreeSelected>({ kind: 'all' })
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, 300)
+  const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null)
 
   const status = isError ? 'bad' : isLoading ? 'warn' : 'ok'
   const statusText = isError
@@ -132,19 +102,17 @@ function App() {
             query={debouncedSearch}
             search={search}
             onSearch={setSearch}
+            selectedFileId={selectedFile?.id ?? null}
+            onSelectFile={setSelectedFile}
           />
-          <Panel
-            tab=""
-            tabs={['파일 본문', '네트워크', '타임라인', '판정']}
-            hint="콘텐츠 뷰어 — S5 · S6 · S7 · S9"
-          />
+          <ContentViewer selectedFile={selectedFile} />
         </section>
       </main>
 
       <footer className="statusbar">
         <span className="statusbar__tag">HYENA INVESTIGATION CONSOLE</span>
         <span className="statusbar__msg">{footMsg}</span>
-        <span className="statusbar__ver">v0.1 · SLICE&nbsp;2</span>
+        <span className="statusbar__ver">v0.1 · SLICE&nbsp;5</span>
       </footer>
     </div>
   )
