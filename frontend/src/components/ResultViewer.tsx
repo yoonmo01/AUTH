@@ -1,6 +1,6 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { fetchFiles } from '../api/client'
-import { categoryLabel } from '../lib/categories'
+import { categoryLabel } from '../categories'
 import type { FileRecord } from '../types'
 import type { TreeSelected } from './TreeViewer'
 
