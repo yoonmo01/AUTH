@@ -1,0 +1,7 @@
+[
+  { "id": "ent-01", "entity_type": "person", "canonical_value": "김민수", "mention_count": 142 },
+  { "id": "ent-02", "entity_type": "email", "canonical_value": "minsoo.private@gmail.com", "mention_count": 17 },
+  { "id": "ent-03", "entity_type": "org", "canonical_value": "고려정밀", "mention_count": 63 },
+  { "id": "ent-04", "entity_type": "domain", "canonical_value": "koryeo-precision.com", "mention_count": 29 },
+  { "id": "ent-05", "entity_type": "device", "canonical_value": "USB\\VID_0951&PID_1666", "mention_count": 8 }
+]
