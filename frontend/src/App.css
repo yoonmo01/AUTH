@@ -485,6 +485,231 @@ body::after {
 }
 
 /* ============================================================
+   TREE — data-source navigator
+   ============================================================ */
+
+.zone__body--tree {
+  display: block;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 6px 0;
+  background-image: none;
+}
+
+.tree,
+.tree__children {
+  list-style: none;
+}
+
+.tree__node {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 7px 14px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--f-sans);
+  font-size: 12.5px;
+  color: var(--ink-dim);
+  text-align: left;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    box-shadow 0.15s;
+}
+
+.tree__node:hover {
+  background: var(--panel-2);
+  color: var(--ink);
+}
+
+.tree__node.is-on {
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.tree__node--root {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.tree__children .tree__node {
+  padding-left: 32px;
+}
+
+.tree__mark {
+  font-size: 10px;
+  color: var(--ink-faint);
+}
+.tree__node.is-on .tree__mark {
+  color: var(--accent);
+}
+
+.tree__label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree__count {
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.tree__node.is-on .tree__count {
+  color: var(--accent);
+}
+
+.tree__msg,
+.table__msg {
+  padding: 18px 16px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
+
+/* ============================================================
+   RESULT — file table + search
+   ============================================================ */
+
+.zone__head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  height: 36px;
+  padding: 0 12px 0 14px;
+  background: linear-gradient(180deg, var(--panel-2), #ffffff);
+  border-bottom: 1px solid var(--line);
+}
+
+.zone__title {
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--ink-dim);
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 230px;
+  padding: 3px 9px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.search:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.search__icon {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.search__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  font-family: var(--f-sans);
+  font-size: 12px;
+  color: var(--ink);
+}
+.search__input::placeholder {
+  color: var(--ink-faint);
+}
+
+.zone__body--table {
+  display: block;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+  background-image: none;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--panel-2);
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--ink-faint);
+  text-align: left;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.table tbody td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--ink-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+.table tbody tr:hover td {
+  background: var(--panel-2);
+  color: var(--ink);
+}
+
+.table__name {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.table__cat {
+  display: inline-block;
+  padding: 2px 7px;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.table__num {
+  font-family: var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.table__path {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.is-fetching {
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+
+/* ============================================================
    FOOTER — status strip
    ============================================================ */
 
