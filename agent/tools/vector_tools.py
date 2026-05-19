@@ -47,13 +47,13 @@ def embed(text: str) -> list[float]:
 # ---------------------------------------------------------------------------
 
 @tool
-def search_vector_db(query_text: str, top_k: int = 50, threshold: float = 0.75) -> str:
+def search_vector_db(query_text: str, top_k: int = 50, threshold: float = 0.5) -> str:
     """Qdrant에서 의미적으로 유사한 문서 청크를 검색합니다.
 
     Args:
         query_text: 검색 쿼리 텍스트 (예: "기밀 단가 계약 거래처 원가")
         top_k: 반환할 최대 결과 수 (기본값 50)
-        threshold: 최소 유사도 점수 (기본값 0.75)
+        threshold: 최소 유사도 점수 (기본값 0.5)
 
     Returns:
         유사 청크 목록 JSON 문자열 (file_id, score, metadata 포함)
