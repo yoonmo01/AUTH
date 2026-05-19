@@ -1,0 +1,29 @@
+[
+  {
+    "edge_id": "ge-1",
+    "source_id": "u-1",
+    "target_id": "e-2001",
+    "relation_type": "SENT",
+    "label": "발송",
+    "confidence": 0.98,
+    "sent_at": "2026-05-02T09:18:40"
+  },
+  {
+    "edge_id": "ge-2",
+    "source_id": "e-2001",
+    "target_id": "r-1",
+    "relation_type": "TO",
+    "label": "수신자",
+    "confidence": 0.99,
+    "sent_at": "2026-05-02T09:18:40"
+  },
+  {
+    "edge_id": "ge-3",
+    "source_id": "e-2001",
+    "target_id": "f-1001",
+    "relation_type": "ATTACHED",
+    "label": "첨부",
+    "confidence": 0.95,
+    "sent_at": "2026-05-02T09:18:40"
+  }
+]
