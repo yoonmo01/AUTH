@@ -1,6 +1,7 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { fetchFiles, fetchEmails, fetchEntities } from '../api/client'
 import { categoryLabel } from '../categories'
+import { formatSize, formatDate } from '../format'
 import type { FileRecord, EmailRecord, EntityRecord } from '../types'
 import type { TreeSelected } from './TreeViewer'
 
@@ -9,6 +10,8 @@ type Props = {
   query: string          // debounced search term
   search: string         // raw input value (controlled)
   onSearch: (v: string) => void
+  selectedFileId: string | null
+  onSelectFile: (f: FileRecord) => void
 }
 
 // The query result is tagged with its view so keepPreviousData can never
@@ -21,25 +24,20 @@ type Result =
 
 type View = Result['view']
 
-function formatSize(b: number | null): string {
-  if (b == null) return '—'
-  if (b < 1024) return `${b} B`
-  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`
-  return `${(b / 1024 / 1024).toFixed(1)} MB`
-}
-
-function formatDate(s: string | null): string {
-  if (!s) return '—'
-  return s.replace('T', ' ').slice(0, 16)
-}
-
 const TITLES: Record<View, string> = {
   files: 'RESULT · 파일 목록',
   emails: 'RESULT · 이메일 목록',
   entities: 'RESULT · 엔티티 목록',
 }
 
-export function ResultViewer({ selected, query, search, onSearch }: Props) {
+export function ResultViewer({
+  selected,
+  query,
+  search,
+  onSearch,
+  selectedFileId,
+  onSelectFile,
+}: Props) {
   const view: View =
     selected.kind === 'emails'
       ? 'emails'
@@ -151,7 +149,12 @@ export function ResultViewer({ selected, query, search, onSearch }: Props) {
             </thead>
             <tbody>
               {data.rows.map((f) => (
-                <tr key={f.id}>
+                <tr
+                  key={f.id}
+                  className={`table__row${selectedFileId === f.id ? ' is-sel' : ''}`}
+                  onClick={() => onSelectFile(f)}
+                  aria-selected={selectedFileId === f.id}
+                >
                   <td className="table__name" title={f.filename}>{f.filename}</td>
                   <td><span className="table__cat">{categoryLabel(f.category)}</span></td>
                   <td className="table__num">{formatSize(f.file_size)}</td>

@@ -709,6 +709,118 @@ body::after {
   transition: opacity 0.15s;
 }
 
+.table__row {
+  cursor: pointer;
+}
+.table__row.is-sel td {
+  background: var(--accent-soft);
+  color: var(--ink);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.table__row.is-sel:hover td {
+  background: var(--accent-soft);
+}
+
+/* ============================================================
+   CONTENT — file body viewer
+   ============================================================ */
+
+.zone__body--content {
+  display: block;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+  background-image: none;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.meta {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  padding: 8px 16px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  color: var(--ink-dim);
+}
+.meta__cell b {
+  color: var(--ink-faint);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  margin-right: 5px;
+}
+
+.doc {
+  flex: 1;
+  padding: 16px 18px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.doc p {
+  margin: 0 0 0.7em;
+}
+.doc h1,
+.doc h2,
+.doc h3,
+.doc h4 {
+  margin: 1em 0 0.4em;
+  font-family: var(--f-mono);
+  letter-spacing: 0.02em;
+}
+.doc ul,
+.doc ol {
+  margin: 0 0 0.7em 1.3em;
+}
+.doc code,
+.doc pre {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line-soft);
+}
+.doc code {
+  padding: 1px 5px;
+}
+.doc pre {
+  padding: 10px 12px;
+  overflow: auto;
+}
+
+/* backend-inserted highlight spans — cool-white semantic tints */
+.doc mark {
+  padding: 1px 3px;
+  border-radius: 1px;
+  background: var(--accent-soft);
+  color: var(--ink);
+  box-shadow: inset 0 -2px 0 rgba(21, 89, 238, 0.4);
+}
+.doc mark[data-label='keyword'] {
+  background: rgba(21, 89, 238, 0.12);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.doc mark[data-label='suspicious'] {
+  background: rgba(224, 39, 74, 0.13);
+  box-shadow: inset 0 -2px 0 var(--bad);
+}
+.doc mark[data-label='pii'] {
+  background: rgba(194, 121, 11, 0.16);
+  box-shadow: inset 0 -2px 0 var(--warn);
+}
+.doc mark[data-label='investigation'] {
+  background: rgba(14, 163, 114, 0.14);
+  box-shadow: inset 0 -2px 0 var(--ok);
+}
+
 /* ============================================================
    FOOTER — status strip
    ============================================================ */
