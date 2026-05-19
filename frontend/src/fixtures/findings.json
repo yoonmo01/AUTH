@@ -1,0 +1,35 @@
+[
+  {
+    "id": "find-1",
+    "finding_type": "exfiltration_channel",
+    "severity": "HIGH",
+    "title": "공급사 단가표를 개인 Gmail로 전송",
+    "description": "퇴사 7일 전, 1분기 공급사 단가표 파일이 회사 메일에서 개인 Gmail(minsoo.private@gmail.com)로 첨부 전송됨.",
+    "agent_name": "exfiltration",
+    "confidence": 0.93,
+    "created_at": "2026-05-18T14:08:21",
+    "evidence_count": 4
+  },
+  {
+    "id": "find-2",
+    "finding_type": "removable_media",
+    "severity": "MEDIUM",
+    "title": "USB로 거래처 연락처 백업 복사",
+    "description": "퇴사 8일 전 USB(SanDisk Ultra) 연결 직후 거래처_연락처_백업.csv가 외장 드라이브로 복사됨.",
+    "agent_name": "behavior",
+    "confidence": 0.78,
+    "created_at": "2026-05-18T14:09:05",
+    "evidence_count": 3
+  },
+  {
+    "id": "find-3",
+    "finding_type": "counter_evidence",
+    "severity": "INFO",
+    "title": "단가표 접근은 직무 범위 내",
+    "description": "단가표 파일 접근 자체는 구매팀 일상 업무 패턴과 일치 — 전송 행위만 이상 신호.",
+    "agent_name": "counter_evidence",
+    "confidence": 0.6,
+    "created_at": "2026-05-18T14:10:48",
+    "evidence_count": 2
+  }
+]

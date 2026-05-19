@@ -1,0 +1,54 @@
+[
+  {
+    "id": "act-1",
+    "event_type": "file_access",
+    "event_at": "2026-05-02T09:15:03",
+    "actor": "minsoo",
+    "process_name": "EXCEL.EXE",
+    "target_path": "C:/Users/minsoo/Documents/구매/2026_1분기_공급사_단가표.xlsx",
+    "url": null,
+    "title": null,
+    "confidence": 0.9,
+    "filename": "2026_1분기_공급사_단가표.xlsx",
+    "category": "document"
+  },
+  {
+    "id": "act-2",
+    "event_type": "usb_connect",
+    "event_at": "2026-05-01T21:58:30",
+    "actor": "minsoo",
+    "process_name": null,
+    "target_path": "USB\\VID_0951&PID_1666",
+    "url": null,
+    "title": "SanDisk Ultra",
+    "confidence": 0.85,
+    "filename": null,
+    "category": null
+  },
+  {
+    "id": "act-3",
+    "event_type": "file_copy",
+    "event_at": "2026-05-01T22:06:10",
+    "actor": "minsoo",
+    "process_name": "explorer.exe",
+    "target_path": "E:/거래처_연락처_백업.csv",
+    "url": null,
+    "title": null,
+    "confidence": 0.8,
+    "filename": "거래처_연락처_백업.csv",
+    "category": "document"
+  },
+  {
+    "id": "act-4",
+    "event_type": "web_access",
+    "event_at": "2026-05-02T09:20:55",
+    "actor": "minsoo",
+    "process_name": "chrome.exe",
+    "target_path": null,
+    "url": "https://mail.google.com/mail/u/0/#sent",
+    "title": "Gmail - 보낸편지함",
+    "confidence": 0.75,
+    "filename": null,
+    "category": null
+  }
+]

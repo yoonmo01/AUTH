@@ -1,15 +1,38 @@
 import type {
   Summary, FileRecord, EmailRecord, EntityRecord,
   GraphNode, GraphEdge, ActivityEvent, FileContent,
-  Finding, Case,
+  Finding, Case, Session,
 } from '../types'
+import { resolveFixture } from '../fixtures'
 
 const BASE = '/api'
 
+function orFixture<T>(path: string, reason: string): T {
+  const fx = resolveFixture(path)
+  if (fx === undefined) {
+    throw new Error(`${reason}: ${path} (no fixture available)`)
+  }
+  console.warn(`[api] ${path}: 백엔드 미응답(${reason}) → 픽스처 폴백`)
+  return fx as T
+}
+
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`)
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${path}`)
-  return res.json() as Promise<T>
+  let res: Response
+  try {
+    res = await fetch(`${BASE}${path}`)
+  } catch {
+    // connection refused / network down → backend not running yet
+    return orFixture<T>(path, 'network error')
+  }
+  if (res.ok) return (await res.json()) as T
+  // 404 = endpoint not implemented yet.
+  // 5xx = backend down — the Vite dev proxy surfaces an unreachable
+  // target (:8000 not running) as a 500, so treat all 5xx as "no backend".
+  if (res.status === 404 || res.status >= 500) {
+    return orFixture<T>(path, `HTTP ${res.status}`)
+  }
+  // 4xx (bad request / auth) = a real client-side bug → surface it.
+  throw new Error(`${res.status} ${res.statusText}: ${path}`)
 }
 
 // ── Summary ──────────────────────────────────────────────────
@@ -68,3 +91,10 @@ export const fetchCase = (id: string): Promise<Case> =>
 
 export const fetchFindings = (sessionId: string): Promise<Finding[]> =>
   get(`/sessions/${sessionId}/findings`)
+
+// ── Sessions ─────────────────────────────────────────────────
+export const fetchSessions = (): Promise<Session[]> =>
+  get('/sessions')
+
+export const fetchSession = (id: string): Promise<Session> =>
+  get(`/sessions/${id}`)

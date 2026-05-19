@@ -1,0 +1,12 @@
+{
+  "file_id": "f-1001",
+  "filename": "2026_1분기_공급사_단가표.xlsx",
+  "content_kind": "text",
+  "html": "<p>품목 / 공급사 / 단가(USD) / 비고</p><p><mark data-label=\"keyword\">고려정밀</mark> · 베어링 6204 · 1.82 · 연 12만개</p><p><mark data-label=\"suspicious\">개인 Gmail로 사본 전송 예정</mark></p><p>담당 <mark data-label=\"pii\">김민수</mark> / 구매팀</p>",
+  "highlights": [
+    { "start": 24, "end": 28, "label": "keyword", "note": "공급사명" },
+    { "start": 56, "end": 73, "label": "suspicious", "note": "유출 정황 표현" },
+    { "start": 80, "end": 83, "label": "pii", "note": "인명" }
+  ],
+  "total_chunks": 3
+}

@@ -1,0 +1,29 @@
+[
+  {
+    "edge_id": "ga-1",
+    "source_id": "u-1",
+    "target_id": "f-1001",
+    "relation_type": "ACCESSED",
+    "label": "접근",
+    "confidence": 0.9,
+    "event_at": "2026-05-02T09:15:03"
+  },
+  {
+    "edge_id": "ga-2",
+    "source_id": "u-1",
+    "target_id": "ev-1",
+    "relation_type": "PERFORMED",
+    "label": "USB 연결",
+    "confidence": 0.88,
+    "event_at": "2026-05-01T21:58:30"
+  },
+  {
+    "edge_id": "ga-3",
+    "source_id": "ev-1",
+    "target_id": "f-1002",
+    "relation_type": "COPIED_TO",
+    "label": "복사",
+    "confidence": 0.82,
+    "event_at": "2026-05-01T22:06:10"
+  }
+]
