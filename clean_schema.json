@@ -1,0 +1,22 @@
+{
+  "final_report": {
+    "report_type": "CLEAN_CERTIFICATE",
+    "verdict": "CLEAN",
+    "risk_score": "number",
+    "risk_breakdown": {},
+    "subject": {
+      "name": "string",
+      "position": "string",
+      "hire_date": "string",
+      "resignation_date": "string"
+    },
+    "summary": "string",
+    "analysis_summary": {
+      "emails_analyzed": "number",
+      "files_analyzed": "number",
+      "anomalies_found": "number",
+      "false_positives_removed": "number"
+    },
+    "issued_at": "string (ISO8601)"
+  }
+}

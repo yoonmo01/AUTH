@@ -4,13 +4,17 @@
     "query_text": "김민수 구매팀 퇴사자 데이터 유출 분석",
     "status": "completed",
     "started_at": "2026-05-18T14:02:00",
-    "completed_at": "2026-05-18T14:11:37"
+    "completed_at": "2026-05-18T14:11:37",
+    "verdict": "HIGH",
+    "risk_score": 82
   },
   {
     "id": "s-9002",
     "query_text": "재분석 — 반증 검증 포함",
     "status": "running",
     "started_at": "2026-05-19T09:30:12",
-    "completed_at": null
+    "completed_at": null,
+    "verdict": null,
+    "risk_score": null
   }
 ]

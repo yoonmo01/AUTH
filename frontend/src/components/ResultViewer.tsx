@@ -1,8 +1,9 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { fetchFiles, fetchEmails, fetchEntities } from '../api/client'
+import { fetchFiles, fetchEmails, fetchEntities, fetchSessions } from '../api/client'
 import { categoryLabel } from '../categories'
 import { formatSize, formatDate } from '../format'
-import type { FileRecord, EmailRecord, EntityRecord } from '../types'
+import { VerdictBadge } from './VerdictBadge'
+import type { FileRecord, EmailRecord, EntityRecord, Session } from '../types'
 import type { TreeSelected } from './TreeViewer'
 
 type Props = {
@@ -12,6 +13,8 @@ type Props = {
   onSearch: (v: string) => void
   selectedFileId: string | null
   onSelectFile: (f: FileRecord) => void
+  selectedSessionId: string | null
+  onSelectSession: (id: string) => void
 }
 
 // The query result is tagged with its view so keepPreviousData can never
@@ -21,6 +24,7 @@ type Result =
   | { view: 'files'; rows: FileRecord[] }
   | { view: 'emails'; rows: EmailRecord[] }
   | { view: 'entities'; rows: EntityRecord[] }
+  | { view: 'sessions'; rows: Session[] }
 
 type View = Result['view']
 
@@ -28,6 +32,7 @@ const TITLES: Record<View, string> = {
   files: 'RESULT · 파일 목록',
   emails: 'RESULT · 이메일 목록',
   entities: 'RESULT · 엔티티 목록',
+  sessions: 'RESULT · 수사 결과',
 }
 
 export function ResultViewer({
@@ -37,13 +42,17 @@ export function ResultViewer({
   onSearch,
   selectedFileId,
   onSelectFile,
+  selectedSessionId,
+  onSelectSession,
 }: Props) {
   const view: View =
     selected.kind === 'emails'
       ? 'emails'
       : selected.kind === 'entities'
         ? 'entities'
-        : 'files'
+        : selected.kind === 'sessions'
+          ? 'sessions'
+          : 'files'
 
   const queryKey =
     selected.kind === 'category'
@@ -52,13 +61,16 @@ export function ResultViewer({
         ? ['files', 'all', query]
         : selected.kind === 'emails'
           ? ['emails', query]
-          : ['entities']
+          : selected.kind === 'sessions'
+            ? ['sessions']
+            : ['entities']
 
   const { data, isLoading, isError, isFetching } = useQuery<Result>({
     queryKey,
     queryFn: async (): Promise<Result> => {
       if (view === 'emails') return { view, rows: await fetchEmails(query) }
       if (view === 'entities') return { view, rows: await fetchEntities() }
+      if (view === 'sessions') return { view, rows: await fetchSessions() }
       return {
         view,
         rows: await fetchFiles(
@@ -132,6 +144,40 @@ export function ResultViewer({
                   <td><span className="table__cat">{e.entity_type}</span></td>
                   <td className="table__name" title={e.canonical_value}>{e.canonical_value}</td>
                   <td className="table__num">{e.mention_count.toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : data.view === 'sessions' ? (
+          <table className={tableClass}>
+            <thead>
+              <tr>
+                <th>질의</th>
+                <th>판정</th>
+                <th>리스크</th>
+                <th>완료시각</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.rows.map((s) => (
+                <tr
+                  key={s.id}
+                  className={`table__row${selectedSessionId === s.id ? ' is-sel' : ''}`}
+                  onClick={() => onSelectSession(s.id)}
+                  aria-selected={selectedSessionId === s.id}
+                >
+                  <td className="table__name" title={s.query_text ?? ''}>
+                    {s.query_text ?? '(질의 없음)'}
+                  </td>
+                  <td>
+                    {s.status === 'completed' && s.verdict ? (
+                      <VerdictBadge verdict={s.verdict} />
+                    ) : (
+                      <span className="table__path">{s.status}</span>
+                    )}
+                  </td>
+                  <td className="table__num">{s.risk_score ?? '—'}</td>
+                  <td className="table__num">{formatDate(s.completed_at)}</td>
                 </tr>
               ))}
             </tbody>
