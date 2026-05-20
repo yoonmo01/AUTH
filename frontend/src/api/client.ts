@@ -35,6 +35,24 @@ async function get<T>(path: string): Promise<T> {
   throw new Error(`${res.status} ${res.statusText}: ${path}`)
 }
 
+async function post<T>(path: string, body: unknown): Promise<T> {
+  let res: Response
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } catch {
+    return orFixture<T>(path, 'network error')
+  }
+  if (res.ok) return (await res.json()) as T
+  if (res.status === 404 || res.status >= 500) {
+    return orFixture<T>(path, `HTTP ${res.status}`)
+  }
+  throw new Error(`${res.status} ${res.statusText}: ${path}`)
+}
+
 // ── Summary ──────────────────────────────────────────────────
 export const fetchSummary = (): Promise<Summary> =>
   get('/summary')
@@ -97,4 +115,28 @@ export const fetchSessions = (): Promise<Session[]> =>
   get('/sessions')
 
 export const fetchSession = (id: string): Promise<Session> =>
+  get(`/sessions/${id}`)
+
+// ── Investigation trigger ────────────────────────────────────
+// Backend dependency: the trigger endpoint does not exist yet — the call
+// falls back to a fixture (running session) until the backend ships it.
+export interface InvestigationRequest {
+  evidence_image_path: string
+  subject: {
+    name: string
+    position: string
+    hire_date: string
+    resignation_date: string
+  }
+}
+
+export interface SubmitResult {
+  sessionId: string
+  status: string
+}
+
+export const submitInvestigation = (req: InvestigationRequest): Promise<SubmitResult> =>
+  post('/investigations', req)
+
+export const pollSession = (id: string): Promise<Session> =>
   get(`/sessions/${id}`)

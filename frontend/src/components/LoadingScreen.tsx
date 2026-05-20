@@ -1,7 +1,7 @@
 // S1 stub — replaced with the real loading screen + progress model in 온보딩 S5 (#17).
 
 type Props = {
-  onComplete: (sessionId: string | null) => void
+  onComplete: () => void
   onFail: (error: string) => void
 }
 
@@ -25,7 +25,7 @@ export function LoadingScreen({ onComplete, onFail }: Props) {
           <button
             type="button"
             className="onb__btn onb__btn--primary"
-            onClick={() => onComplete(null)}
+            onClick={onComplete}
           >
             분석 완료 →
           </button>

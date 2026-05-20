@@ -17,7 +17,7 @@ function App() {
     case 'form':
       return (
         <InvestigationForm
-          onSubmit={(input) => dispatch({ type: 'SUBMIT', input })}
+          onSubmit={(input, sessionId) => dispatch({ type: 'SUBMIT', input, sessionId })}
           onBack={() => dispatch({ type: 'BACK' })}
         />
       )
@@ -25,7 +25,7 @@ function App() {
     case 'loading':
       return (
         <LoadingScreen
-          onComplete={(sessionId) => dispatch({ type: 'ANALYSIS_COMPLETE', sessionId })}
+          onComplete={() => dispatch({ type: 'ANALYSIS_COMPLETE', sessionId: flow.sessionId })}
           onFail={(error) => dispatch({ type: 'ANALYSIS_FAILED', error })}
         />
       )

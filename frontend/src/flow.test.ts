@@ -19,11 +19,12 @@ describe('flowReducer', () => {
     expect(next.phase).toBe('form')
   })
 
-  it('form + SUBMIT → loading and carries the input', () => {
+  it('form + SUBMIT → loading and carries the input and session id', () => {
     const form: FlowState = { ...initialFlowState, phase: 'form' }
-    const next = flowReducer(form, { type: 'SUBMIT', input: INPUT })
+    const next = flowReducer(form, { type: 'SUBMIT', input: INPUT, sessionId: 's-run-1' })
     expect(next.phase).toBe('loading')
     expect(next.input).toEqual(INPUT)
+    expect(next.sessionId).toBe('s-run-1')
     expect(next.error).toBeNull()
   })
 
@@ -54,7 +55,7 @@ describe('flowReducer', () => {
   it('is a no-op for undefined (phase, event) pairs', () => {
     const landing = initialFlowState
     // START only applies at landing — applying SUBMIT here changes nothing.
-    expect(flowReducer(landing, { type: 'SUBMIT', input: INPUT })).toBe(landing)
+    expect(flowReducer(landing, { type: 'SUBMIT', input: INPUT, sessionId: 's-1' })).toBe(landing)
     // ANALYSIS_COMPLETE only applies at loading.
     const form: FlowState = { ...initialFlowState, phase: 'form' }
     expect(flowReducer(form, { type: 'ANALYSIS_COMPLETE', sessionId: 's-1' })).toBe(form)
@@ -66,7 +67,7 @@ describe('flowReducer', () => {
   it('walks the full happy path landing → form → loading → console', () => {
     let s = initialFlowState
     s = flowReducer(s, { type: 'START' })
-    s = flowReducer(s, { type: 'SUBMIT', input: INPUT })
+    s = flowReducer(s, { type: 'SUBMIT', input: INPUT, sessionId: 's-run' })
     s = flowReducer(s, { type: 'ANALYSIS_COMPLETE', sessionId: 's-42' })
     expect(s.phase).toBe('console')
     expect(s.sessionId).toBe('s-42')

@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import { validateInvestigationForm, type FormField } from '../investigationForm'
+import { submitInvestigation, type InvestigationRequest } from '../api/client'
 import type { InvestigationInput } from '../flow'
 
 type Props = {
-  onSubmit: (input: InvestigationInput) => void
+  onSubmit: (input: InvestigationInput, sessionId: string) => void
   onBack: () => void
 }
 
@@ -13,6 +14,18 @@ const EMPTY: InvestigationInput = {
   position: '',
   hireDate: '',
   resignationDate: '',
+}
+
+function toRequest(input: InvestigationInput): InvestigationRequest {
+  return {
+    evidence_image_path: input.evidenceImagePath,
+    subject: {
+      name: input.name,
+      position: input.position,
+      hire_date: input.hireDate,
+      resignation_date: input.resignationDate,
+    },
+  }
 }
 
 function Field({
@@ -39,6 +52,8 @@ export function InvestigationForm({ onSubmit, onBack }: Props) {
   const [input, setInput] = useState<InvestigationInput>(EMPTY)
   const [touched, setTouched] = useState<Set<FormField>>(new Set())
   const [submitAttempted, setSubmitAttempted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const { ok, errors } = validateInvestigationForm(input)
 
@@ -51,10 +66,20 @@ export function InvestigationForm({ onSubmit, onBack }: Props) {
   // An error surfaces once its field is touched or a submit was attempted.
   const show = (field: FormField) => touched.has(field) || submitAttempted
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitAttempted(true)
-    if (ok) onSubmit(input)
+    if (!ok || submitting) return
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      const { sessionId } = await submitInvestigation(toRequest(input))
+      onSubmit(input, sessionId)
+      // On success the flow advances to 'loading' and this form unmounts.
+    } catch {
+      setSubmitError('분석 요청에 실패했습니다 — 다시 시도하세요')
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -118,16 +143,18 @@ export function InvestigationForm({ onSubmit, onBack }: Props) {
           </Field>
         </div>
 
+        {submitError && <div className="iform__submit-err">{submitError}</div>}
+
         <div className="iform__btns">
-          <button type="button" className="onb__btn" onClick={onBack}>
+          <button type="button" className="onb__btn" onClick={onBack} disabled={submitting}>
             뒤로
           </button>
           <button
             type="submit"
             className="onb__btn onb__btn--primary"
-            disabled={!ok}
+            disabled={!ok || submitting}
           >
-            분석 시작
+            {submitting ? '요청 중…' : '분석 시작'}
           </button>
         </div>
       </form>
