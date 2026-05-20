@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchFileContent } from '../api/client'
 import { NetworkViewer } from './NetworkViewer'
+import { TimelineViewer } from './TimelineViewer'
 import { sanitizeHtml } from '../sanitizeHtml'
 import { formatSize, formatDate } from '../format'
 import type { FileContent, FileRecord } from '../types'
@@ -79,12 +80,12 @@ export function ContentViewer({ selectedFile }: Props) {
           )
         ) : tab === 1 ? (
           <NetworkViewer />
+        ) : tab === 2 ? (
+          <TimelineViewer />
         ) : (
           <div className="ph">
             <span className="ph__mark" aria-hidden="true">◇</span>
-            <span className="ph__txt">
-              {TABS[tab]} — {tab === 2 ? 'S7' : 'S9'}에서 구현
-            </span>
+            <span className="ph__txt">{TABS[tab]} — S9에서 구현</span>
           </div>
         )}
       </div>

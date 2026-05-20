@@ -894,6 +894,117 @@ body::after {
 }
 
 /* ============================================================
+   TIMELINE — chronological activity rail
+   ============================================================ */
+
+.tl {
+  list-style: none;
+  width: 100%;
+  padding: 14px 18px;
+}
+
+.tl__item {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.tl__rail {
+  position: relative;
+  flex: none;
+  width: 14px;
+  display: flex;
+  justify-content: center;
+}
+
+/* connector line through the dot column */
+.tl__rail::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+}
+
+.tl__item:first-child .tl__rail::before {
+  top: 9px;
+}
+.tl__item:last-child .tl__rail::before {
+  bottom: calc(100% - 9px);
+}
+
+.tl__dot {
+  position: relative;
+  z-index: 1;
+  width: 11px;
+  height: 11px;
+  margin-top: 4px;
+  border-radius: 50%;
+  border: 2px solid var(--panel);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.tl__card {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 12px;
+  padding: 9px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--line-hot);
+}
+
+.tl__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 5px;
+}
+
+.tl__time {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+}
+
+.tl__type {
+  padding: 1px 7px;
+  border: 1px solid;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.tl__target {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tl__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin-top: 4px;
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  color: var(--ink-dim);
+}
+
+.tl__cell b {
+  color: var(--ink-faint);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  margin-right: 5px;
+}
+
+/* ============================================================
    FOOTER — status strip
    ============================================================ */
 
