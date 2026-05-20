@@ -1,103 +1,124 @@
 import { describe, it, expect } from 'vitest'
-import { buildDirectoryTree, type DirNode, type TreeNode } from './directoryTree'
-import type { FileRecord } from './types'
+import { buildDirectoryTree, computeCoverage, type DirNode, type RawNode } from './directoryTree'
 
-function mk(over: Partial<FileRecord> & { original_path: string }): FileRecord {
-  return {
-    id: over.id ?? over.original_path,
-    filename: over.filename ?? 'f',
-    extension: 'txt',
-    category: 'document',
-    file_size: 0,
-    file_modified_at: null,
-    file_accessed_at: null,
-    file_created_at: null,
-    relative_path: '',
-    sha256_hash: null,
-    source_label: 'C-drive image',
-    is_user_content: true,
-    etl_status: 'done',
-    ...over,
-  }
+function dir(node: { kind: string }): DirNode {
+  if (node.kind !== 'dir') throw new Error('expected a directory node')
+  return node as DirNode
 }
 
-function dir(node: TreeNode): DirNode {
-  if (node.kind !== 'dir') throw new Error('expected a directory node')
-  return node
+// stru.json-style wrapper: { "<label>": rootNode }.
+const SAMPLE = {
+  사례_데모: {
+    name: 'C',
+    type: 'directory',
+    children: [
+      {
+        name: 'Users',
+        type: 'directory',
+        children: [
+          { name: 'a.txt', type: 'file' },
+          {
+            name: 'minsoo',
+            type: 'directory',
+            children: [{ name: 'b.txt', type: 'file' }],
+          },
+        ],
+      },
+      { name: 'pagefile.sys', type: 'file' },
+    ],
+  } satisfies RawNode,
 }
 
 describe('buildDirectoryTree', () => {
-  it('returns a C: root for an empty file list', () => {
-    const root = buildDirectoryTree([])
-    expect(root.name).toBe('C:')
-    expect(root.children).toEqual([])
+  it('returns an empty C: root for invalid input', () => {
+    expect(buildDirectoryTree(null).children).toEqual([])
+    expect(buildDirectoryTree({}).children).toEqual([])
+    expect(buildDirectoryTree(buildDirectoryTree(null)).name).toBe('C')
   })
 
-  it('nests a single file under its path folders', () => {
-    const root = buildDirectoryTree([
-      mk({ original_path: 'C:/Users/minsoo/a.txt', filename: 'a.txt' }),
-    ])
+  it('unwraps the { label: rootNode } wrapper', () => {
+    const root = buildDirectoryTree(SAMPLE)
+    expect(root.name).toBe('C')
+    expect(root.kind).toBe('dir')
+  })
+
+  it('also accepts a bare root node', () => {
+    expect(buildDirectoryTree(SAMPLE.사례_데모).name).toBe('C')
+  })
+
+  it('converts nested directories and files with accumulated paths', () => {
+    const root = buildDirectoryTree(SAMPLE)
     const users = dir(root.children[0])
     expect(users.name).toBe('Users')
-    const minsoo = dir(users.children[0])
-    expect(minsoo.name).toBe('minsoo')
+    expect(users.path).toBe('C/Users')
+    const minsoo = dir(users.children.find((c) => c.kind === 'dir')!)
+    expect(minsoo.path).toBe('C/Users/minsoo')
     expect(minsoo.children[0].kind).toBe('file')
-    expect(minsoo.children[0].name).toBe('a.txt')
-  })
-
-  it('merges files sharing a folder path', () => {
-    const root = buildDirectoryTree([
-      mk({ original_path: 'C:/Docs/a.txt' }),
-      mk({ original_path: 'C:/Docs/b.txt' }),
-    ])
-    expect(root.children).toHaveLength(1)
-    expect(dir(root.children[0]).children).toHaveLength(2)
+    expect(minsoo.children[0].path).toBe('C/Users/minsoo/b.txt')
   })
 
   it('sorts folders before files, each alphabetically', () => {
-    const root = buildDirectoryTree([
-      mk({ original_path: 'C:/z.txt' }),
-      mk({ original_path: 'C:/Beta/x.txt' }),
-      mk({ original_path: 'C:/a.txt' }),
-      mk({ original_path: 'C:/Alpha/y.txt' }),
+    const raw: RawNode = {
+      name: 'C',
+      type: 'directory',
+      children: [
+        { name: 'z.txt', type: 'file' },
+        { name: 'Beta', type: 'directory', children: [] },
+        { name: 'a.txt', type: 'file' },
+        { name: 'Alpha', type: 'directory', children: [] },
+      ],
+    }
+    expect(buildDirectoryTree(raw).children.map((c) => c.name)).toEqual([
+      'Alpha', 'Beta', 'a.txt', 'z.txt',
     ])
-    expect(root.children.map((c) => c.name)).toEqual(['Alpha', 'Beta', 'a.txt', 'z.txt'])
   })
 
-  it('marks a file investigated only when etl_status is done', () => {
-    const root = buildDirectoryTree([
-      mk({ original_path: 'C:/d.txt', etl_status: 'done' }),
-      mk({ original_path: 'C:/p.txt', etl_status: 'partial' }),
-    ])
-    const files = root.children.filter((c) => c.kind === 'file')
-    expect(files[0].kind === 'file' && files[0].investigated).toBe(true)
-    expect(files[1].kind === 'file' && files[1].investigated).toBe(false)
+  it('is deterministic — same input yields an identical tree', () => {
+    expect(JSON.stringify(buildDirectoryTree(SAMPLE))).toBe(
+      JSON.stringify(buildDirectoryTree(SAMPLE)),
+    )
+  })
+})
+
+describe('computeCoverage', () => {
+  const mkDir = (children: DirNode['children']): DirNode => ({
+    kind: 'dir', name: 'D', path: 'D', coverage: 'none', children,
   })
 
-  it('aggregates folder coverage: full / partial / none', () => {
-    const full = buildDirectoryTree([
-      mk({ original_path: 'C:/Full/a.txt', etl_status: 'done' }),
-      mk({ original_path: 'C:/Full/b.txt', etl_status: 'done' }),
+  it('is full when every descendant file is investigated', () => {
+    const d = mkDir([
+      { kind: 'file', name: 'a', path: 'D/a', investigated: true },
+      { kind: 'file', name: 'b', path: 'D/b', investigated: true },
     ])
-    expect(dir(full.children[0]).coverage).toBe('full')
+    computeCoverage(d)
+    expect(d.coverage).toBe('full')
+  })
 
-    const partial = buildDirectoryTree([
-      mk({ original_path: 'C:/Mix/a.txt', etl_status: 'done' }),
-      mk({ original_path: 'C:/Mix/b.txt', etl_status: 'partial' }),
+  it('is partial when only some are investigated', () => {
+    const d = mkDir([
+      { kind: 'file', name: 'a', path: 'D/a', investigated: true },
+      { kind: 'file', name: 'b', path: 'D/b', investigated: false },
     ])
-    expect(dir(partial.children[0]).coverage).toBe('partial')
+    computeCoverage(d)
+    expect(d.coverage).toBe('partial')
+  })
 
-    const none = buildDirectoryTree([
-      mk({ original_path: 'C:/None/a.txt', etl_status: 'pending' }),
-    ])
-    expect(dir(none.children[0]).coverage).toBe('none')
+  it('is none when no file is investigated or the folder is empty', () => {
+    const empty = mkDir([])
+    computeCoverage(empty)
+    expect(empty.coverage).toBe('none')
+
+    const d = mkDir([{ kind: 'file', name: 'a', path: 'D/a', investigated: false }])
+    computeCoverage(d)
+    expect(d.coverage).toBe('none')
   })
 
   it('rolls coverage up through nested folders', () => {
-    const root = buildDirectoryTree([
-      mk({ original_path: 'C:/Top/Sub/a.txt', etl_status: 'done' }),
-      mk({ original_path: 'C:/Top/b.txt', etl_status: 'pending' }),
-    ])
-    expect(dir(root.children[0]).coverage).toBe('partial')
+    const sub = mkDir([{ kind: 'file', name: 'a', path: 'D/S/a', investigated: true }])
+    sub.name = 'S'
+    sub.path = 'D/S'
+    const top = mkDir([sub, { kind: 'file', name: 'b', path: 'D/b', investigated: false }])
+    computeCoverage(top)
+    expect(top.coverage).toBe('partial')
   })
 })

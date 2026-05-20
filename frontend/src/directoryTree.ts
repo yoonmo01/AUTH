@@ -1,8 +1,7 @@
-// Pure builder: flat file list → nested C: directory tree (콘솔 개편 S3).
-// Each file's path is split into segments; folders aggregate an investigation
+// Pure builder: nested directory structure → C: directory tree.
+// Input is the raw nested form (stru.json shape): each node has a name, a
+// type, and directories carry children. Folders aggregate an investigation
 // coverage from their descendant files. Side-effect free for unit testing.
-
-import type { FileRecord } from './types'
 
 export type Coverage = 'full' | 'partial' | 'none'
 
@@ -18,23 +17,64 @@ export interface FileNode {
   kind: 'file'
   name: string
   path: string
-  file: FileRecord
   investigated: boolean
 }
 
 export type TreeNode = DirNode | FileNode
 
-// A file counts as investigated once ETL has fully processed it.
-function isInvestigated(file: FileRecord): boolean {
-  return file.etl_status === 'done'
+// Raw nested input — the stru.json node shape.
+export interface RawNode {
+  name: string
+  type: 'directory' | 'file'
+  children?: RawNode[]
 }
 
-function pathSegments(file: FileRecord): string[] {
-  const raw = file.original_path || file.relative_path || ''
-  return raw.split(/[/\\]/).filter((s) => s.length > 0)
+// Deterministic pseudo-random hash — same path always yields the same value
+// so the builder stays pure and testable.
+function hashString(s: string): number {
+  let h = 0
+  for (let i = 0; i < s.length; i++) {
+    h = (h * 31 + s.charCodeAt(i)) | 0
+  }
+  return Math.abs(h)
 }
 
-function computeCoverage(dir: DirNode): { total: number; done: number } {
+// Demo coverage: ~35% of files are marked investigated, derived from the path
+// hash so the marking is stable across renders.
+function isInvestigated(path: string): boolean {
+  return hashString(path) % 100 < 35
+}
+
+function isRawNode(v: unknown): v is RawNode {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    typeof (v as RawNode).name === 'string' &&
+    ((v as RawNode).type === 'directory' || (v as RawNode).type === 'file')
+  )
+}
+
+// Accept either a bare RawNode or a wrapper object { "<label>": RawNode }.
+function unwrapRoot(raw: unknown): RawNode | null {
+  if (isRawNode(raw)) return raw
+  if (typeof raw === 'object' && raw !== null) {
+    const first = Object.values(raw as Record<string, unknown>)[0]
+    if (isRawNode(first)) return first
+  }
+  return null
+}
+
+function convert(raw: RawNode, parentPath: string): TreeNode {
+  const path = parentPath ? `${parentPath}/${raw.name}` : raw.name
+  if (raw.type === 'file') {
+    return { kind: 'file', name: raw.name, path, investigated: isInvestigated(path) }
+  }
+  const children = (raw.children ?? []).map((child) => convert(child, path))
+  return { kind: 'dir', name: raw.name, path, children, coverage: 'none' }
+}
+
+/** Aggregate folder coverage from descendant files. Mutates `dir.coverage`. */
+export function computeCoverage(dir: DirNode): { total: number; done: number } {
   let total = 0
   let done = 0
   for (const child of dir.children) {
@@ -64,44 +104,16 @@ function sortTree(dir: DirNode): void {
 }
 
 /**
- * Build the C: directory tree from a flat file list. The first path segment
- * (the drive) becomes the root; intermediate segments become folders and the
- * last segment a file node. Folders carry an aggregated coverage marker.
+ * Build the C: directory tree from the raw nested structure. Returns the
+ * root directory node; invalid input yields an empty C: root.
  */
-export function buildDirectoryTree(files: FileRecord[]): DirNode {
-  const root: DirNode = { kind: 'dir', name: 'C:', path: 'C:', children: [], coverage: 'none' }
-
-  for (const file of files) {
-    const segs = pathSegments(file)
-    if (segs.length === 0) continue
-
-    let dir = root
-    let path = root.path
-    // segs[0] is the drive (root) — walk intermediate folders.
-    for (let i = 1; i < segs.length - 1; i++) {
-      const name = segs[i]
-      path = `${path}/${name}`
-      let next = dir.children.find(
-        (c): c is DirNode => c.kind === 'dir' && c.name === name,
-      )
-      if (!next) {
-        next = { kind: 'dir', name, path, children: [], coverage: 'none' }
-        dir.children.push(next)
-      }
-      dir = next
-    }
-
-    const name = segs[segs.length - 1]
-    dir.children.push({
-      kind: 'file',
-      name,
-      path: `${path}/${name}`,
-      file,
-      investigated: isInvestigated(file),
-    })
+export function buildDirectoryTree(raw: unknown): DirNode {
+  const root = unwrapRoot(raw)
+  if (!root || root.type !== 'directory') {
+    return { kind: 'dir', name: 'C', path: 'C', children: [], coverage: 'none' }
   }
-
-  computeCoverage(root)
-  sortTree(root)
-  return root
+  const tree = convert(root, '') as DirNode
+  computeCoverage(tree)
+  sortTree(tree)
+  return tree
 }
