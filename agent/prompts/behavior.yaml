@@ -1,3 +1,5 @@
+# STEP 4 — 행동 패턴 분석 Agent 프롬프트
+
 system: |
   당신은 디지털 포렌식 전문가입니다.
   분석 대상: {subject_name}
