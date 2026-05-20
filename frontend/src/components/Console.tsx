@@ -8,6 +8,7 @@ import { TreeViewer, type TreeSelected } from './TreeViewer'
 import { ResultViewer } from './ResultViewer'
 import { ContentViewer } from './ContentViewer'
 import { DirectoryTree } from './DirectoryTree'
+import { LayoutToggle } from './LayoutToggle'
 import type { Summary, FileRecord, Session } from '../types'
 
 const nf = new Intl.NumberFormat('en-US')
@@ -98,8 +99,6 @@ export function Console({ initialSessionId }: Props) {
       selectedSessionId={selectedSessionId}
       tab={contentTab}
       onTab={setContentTab}
-      layout={layout}
-      onToggleLayout={() => setLayout(toggleLayout(layout))}
     />
   )
 
@@ -124,6 +123,11 @@ export function Console({ initialSessionId }: Props) {
         </div>
 
         <div className="hdr__readouts">
+          <LayoutToggle
+            layout={layout}
+            onToggle={() => setLayout(toggleLayout(layout))}
+          />
+          <span className="hdr__div" aria-hidden="true" />
           <Readout label="FILES" value={data?.files} loading={isLoading} accent />
           <Readout label="EMAILS" value={data?.emails} loading={isLoading} accent />
           <Readout
