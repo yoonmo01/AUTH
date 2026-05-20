@@ -19,13 +19,18 @@ describe('flowReducer', () => {
     expect(next.phase).toBe('form')
   })
 
-  it('form + SUBMIT → loading and carries the input and session id', () => {
+  it('form + SUBMIT → etl and carries the input and session id', () => {
     const form: FlowState = { ...initialFlowState, phase: 'form' }
     const next = flowReducer(form, { type: 'SUBMIT', input: INPUT, sessionId: 's-run-1' })
-    expect(next.phase).toBe('loading')
+    expect(next.phase).toBe('etl')
     expect(next.input).toEqual(INPUT)
     expect(next.sessionId).toBe('s-run-1')
     expect(next.error).toBeNull()
+  })
+
+  it('etl + ETL_DONE → loading', () => {
+    const etl: FlowState = { ...initialFlowState, phase: 'etl' }
+    expect(flowReducer(etl, { type: 'ETL_DONE' }).phase).toBe('loading')
   })
 
   it('loading + ANALYSIS_COMPLETE → console and carries the session id', () => {
@@ -64,10 +69,13 @@ describe('flowReducer', () => {
     expect(flowReducer(loading, { type: 'BACK' })).toBe(loading)
   })
 
-  it('walks the full happy path landing → form → loading → console', () => {
+  it('walks the full happy path landing → form → etl → loading → console', () => {
     let s = initialFlowState
     s = flowReducer(s, { type: 'START' })
     s = flowReducer(s, { type: 'SUBMIT', input: INPUT, sessionId: 's-run' })
+    expect(s.phase).toBe('etl')
+    s = flowReducer(s, { type: 'ETL_DONE' })
+    expect(s.phase).toBe('loading')
     s = flowReducer(s, { type: 'ANALYSIS_COMPLETE', sessionId: 's-42' })
     expect(s.phase).toBe('console')
     expect(s.sessionId).toBe('s-42')

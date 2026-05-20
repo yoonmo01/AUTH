@@ -2,7 +2,7 @@
 // Gates the investigation console behind: landing → form → loading → console.
 // Side-effect free so it can be unit tested in isolation.
 
-export type FlowPhase = 'landing' | 'form' | 'loading' | 'console'
+export type FlowPhase = 'landing' | 'form' | 'etl' | 'loading' | 'console'
 
 export interface InvestigationInput {
   evidenceImagePath: string
@@ -22,6 +22,7 @@ export interface FlowState {
 export type FlowEvent =
   | { type: 'START' }
   | { type: 'SUBMIT'; input: InvestigationInput; sessionId: string }
+  | { type: 'ETL_DONE' }
   | { type: 'ANALYSIS_COMPLETE'; sessionId: string | null }
   | { type: 'ANALYSIS_FAILED'; error: string }
   | { type: 'BACK' }
@@ -47,12 +48,15 @@ export function flowReducer(state: FlowState, event: FlowEvent): FlowState {
       return state.phase === 'form'
         ? {
             ...state,
-            phase: 'loading',
+            phase: 'etl',
             input: event.input,
             sessionId: event.sessionId,
             error: null,
           }
         : state
+
+    case 'ETL_DONE':
+      return state.phase === 'etl' ? { ...state, phase: 'loading' } : state
 
     case 'ANALYSIS_COMPLETE':
       return state.phase === 'loading'
