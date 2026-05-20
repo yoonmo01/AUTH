@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { flowReducer, initialFlowState, type FlowState, type InvestigationInput } from './flow'
 
 const INPUT: InvestigationInput = {
-  evidenceImagePath: 'C:/cases/hyena.E01',
+  evidenceRootPath: 'HYENA_C드라이브',
   name: '김민수',
   position: '구매팀 대리',
   hireDate: '2021-03-02',

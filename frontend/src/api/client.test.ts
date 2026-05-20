@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { fetchSummary, fetchSessions, submitInvestigation, pollSession } from './client'
 
 const REQUEST = {
-  evidence_image_path: 'C:/cases/hyena.E01',
+  evidence_root_path: 'HYENA_C드라이브',
   subject: {
     name: '김민수',
     position: '구매팀 대리',

@@ -3,13 +3,22 @@ import { validateInvestigationForm, type FormField } from '../investigationForm'
 import { submitInvestigation, type InvestigationRequest } from '../api/client'
 import type { InvestigationInput } from '../flow'
 
+// Preset demo folders. Real folder upload is intentionally not used — the
+// program is unfinished, so nothing is staged, uploaded, or scanned.
+const MOCK_FOLDERS = [
+  'C:\\',
+  'C:\\Users\\minsoo',
+  'C:\\Users\\minsoo\\Documents',
+  'C:\\Users\\minsoo\\Desktop',
+]
+
 type Props = {
   onSubmit: (input: InvestigationInput, sessionId: string) => void
   onBack: () => void
 }
 
 const EMPTY: InvestigationInput = {
-  evidenceImagePath: '',
+  evidenceRootPath: '',
   name: '',
   position: '',
   hireDate: '',
@@ -18,7 +27,7 @@ const EMPTY: InvestigationInput = {
 
 function toRequest(input: InvestigationInput): InvestigationRequest {
   return {
-    evidence_image_path: input.evidenceImagePath,
+    evidence_root_path: input.evidenceRootPath,
     subject: {
       name: input.name,
       position: input.position,
@@ -89,16 +98,26 @@ export function InvestigationForm({ onSubmit, onBack }: Props) {
         <span className="iform__tag">PHASE · 수사 요청</span>
         <h1 className="iform__title">새 수사 입력</h1>
 
-        <Field label="증거 이미지 경로" error={errors.evidenceImagePath} show={show('evidenceImagePath')}>
-          <input
+        <Field
+          label="분석 대상 폴더"
+          error={errors.evidenceRootPath}
+          show={show('evidenceRootPath')}
+        >
+          {/* Mock selection — no folder is uploaded, staged, or scanned (demo). */}
+          <select
             className="iform__input"
-            type="text"
-            value={input.evidenceImagePath}
-            placeholder="C:/cases/hyena.E01"
-            onChange={(e) => set('evidenceImagePath', e.target.value)}
-            onBlur={() => blur('evidenceImagePath')}
+            value={input.evidenceRootPath}
+            onChange={(e) => set('evidenceRootPath', e.target.value)}
+            onBlur={() => blur('evidenceRootPath')}
             autoFocus
-          />
+          >
+            <option value="">폴더를 선택하세요</option>
+            {MOCK_FOLDERS.map((folder) => (
+              <option key={folder} value={folder}>
+                {folder}
+              </option>
+            ))}
+          </select>
         </Field>
 
         <div className="iform__row">

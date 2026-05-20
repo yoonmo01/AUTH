@@ -29,8 +29,8 @@ function isValidDate(s: string): boolean {
 export function validateInvestigationForm(input: InvestigationInput): ValidationResult {
   const errors: FormErrors = {}
 
-  if (!input.evidenceImagePath.trim()) {
-    errors.evidenceImagePath = '증거 이미지 경로를 입력하세요'
+  if (!input.evidenceRootPath.trim()) {
+    errors.evidenceRootPath = '분석 대상 폴더를 선택하세요'
   }
   if (!input.name.trim()) {
     errors.name = '이름을 입력하세요'

@@ -121,7 +121,7 @@ export const fetchSession = (id: string): Promise<Session> =>
 // Backend dependency: the trigger endpoint does not exist yet — the call
 // falls back to a fixture (running session) until the backend ships it.
 export interface InvestigationRequest {
-  evidence_image_path: string
+  evidence_root_path: string
   subject: {
     name: string
     position: string
