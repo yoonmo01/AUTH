@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { fetchSession } from '../api/client'
 import { classifyReport } from '../report'
+import { channelLabel, nodeTypeLabel, relationLabel } from '../reportLabels'
 import { formatDate } from '../format'
 import { VerdictBadge } from './VerdictBadge'
 import type { Session, ExfiltrationReport, CleanReport, ReportSubject } from '../types'
@@ -55,7 +56,7 @@ function ExfiltrationReportView({ report }: { report: ExfiltrationReport }) {
             <tbody>
               {report.suspicious_emails.map((e) => (
                 <tr key={e.email_id}>
-                  <td>{e.channel_type}</td>
+                  <td>{channelLabel(e.channel_type)}</td>
                   <td className="table__path">{e.sender}</td>
                   <td className="table__path">{e.recipient}</td>
                   <td className="table__name" title={e.subject}>{e.subject}</td>
@@ -107,7 +108,7 @@ function ExfiltrationReportView({ report }: { report: ExfiltrationReport }) {
         <ul className="vd__net">
           {net.nodes.map((n) => (
             <li key={n.id} className="vd__net-node">
-              <span className="table__cat">{n.type}</span>
+              <span className="table__cat">{nodeTypeLabel(n.type)}</span>
               <span>{n.label}</span>
             </li>
           ))}
@@ -119,7 +120,7 @@ function ExfiltrationReportView({ report }: { report: ExfiltrationReport }) {
             return (
               <li key={i} className="vd__net-edge">
                 <span>{src?.label ?? e.source}</span>
-                <span className="vd__rel">─ {e.relation} →</span>
+                <span className="vd__rel">─ {relationLabel(e.relation)} →</span>
                 <span>{tgt?.label ?? e.target}</span>
               </li>
             )
