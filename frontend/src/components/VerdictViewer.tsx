@@ -2,9 +2,150 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchSession } from '../api/client'
 import { classifyReport } from '../report'
 import { channelLabel, nodeTypeLabel, relationLabel } from '../reportLabels'
-import { formatDate } from '../format'
+import { formatDate, formatSize } from '../format'
 import { VerdictBadge } from './VerdictBadge'
-import type { Session, ExfiltrationReport, CleanReport, ReportSubject } from '../types'
+import type {
+  Session,
+  ExfiltrationReport,
+  CleanReport,
+  ReportSubject,
+  RiskBreakdown,
+  BehaviorSummary,
+  ReportTimelineEntry,
+} from '../types'
+
+const RISK_LABELS: { key: keyof RiskBreakdown; label: string }[] = [
+  { key: 'cross_ref', label: '교차 매칭' },
+  { key: 'deleted_files', label: '파일 삭제' },
+  { key: 'anon_channel', label: '익명 채널' },
+  { key: 'anomaly', label: '행동 이상' },
+  { key: 'counter_evidence', label: '반증 감점' },
+]
+
+function RiskBreakdownSection({ breakdown }: { breakdown: RiskBreakdown }) {
+  const rows = RISK_LABELS.filter((r) => typeof breakdown[r.key] === 'number')
+  return (
+    <section className="vd__section">
+      <h3 className="vd__h">점수 구성</h3>
+      {rows.length === 0 ? (
+        <div className="table__msg">점수 구성 내역 없음</div>
+      ) : (
+        <ul className="vd__risk">
+          {rows.map((r) => {
+            const value = breakdown[r.key] as number
+            const penalty = value < 0
+            return (
+              <li key={r.key} className="vd__risk-row">
+                <span className="vd__risk-label">{r.label}</span>
+                <span
+                  className={`vd__risk-val vd__risk-val--${penalty ? 'penalty' : 'gain'}`}
+                >
+                  {penalty ? value : `+${value}`}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function BehaviorSection({ behavior }: { behavior: BehaviorSummary }) {
+  const { highlight_dates, deleted_files, out_of_hours_activity, notes } = behavior
+  const empty =
+    highlight_dates.length === 0 &&
+    deleted_files.length === 0 &&
+    out_of_hours_activity.length === 0 &&
+    !notes
+  return (
+    <section className="vd__section">
+      <h3 className="vd__h">행동 이상</h3>
+      {empty ? (
+        <div className="table__msg">행동 이상 내역 없음</div>
+      ) : (
+        <>
+          {highlight_dates.length > 0 && (
+            <div className="vd__dates">
+              {highlight_dates.map((d) => (
+                <span key={d} className="vd__date">{d}</span>
+              ))}
+            </div>
+          )}
+          {deleted_files.length > 0 && (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>삭제 파일</th>
+                  <th>삭제 시각</th>
+                  <th>크기</th>
+                  <th>사유</th>
+                </tr>
+              </thead>
+              <tbody>
+                {deleted_files.map((f, i) => (
+                  <tr key={i}>
+                    <td className="table__name" title={f.original_filename}>
+                      {f.original_filename}
+                    </td>
+                    <td className="table__num">{formatDate(f.deleted_at)}</td>
+                    <td className="table__num">{formatSize(f.file_size_bytes)}</td>
+                    <td title={f.reason}>{f.reason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {out_of_hours_activity.length > 0 && (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>업무 외 활동</th>
+                  <th>시각</th>
+                  <th>상세</th>
+                </tr>
+              </thead>
+              <tbody>
+                {out_of_hours_activity.map((a, i) => (
+                  <tr key={i}>
+                    <td>{a.event_type}</td>
+                    <td className="table__num">{formatDate(a.event_at)}</td>
+                    <td title={a.detail}>{a.detail}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {notes && <p className="vd__notes">{notes}</p>}
+        </>
+      )}
+    </section>
+  )
+}
+
+function TimelineSection({ timeline }: { timeline: ReportTimelineEntry[] }) {
+  return (
+    <section className="vd__section">
+      <h3 className="vd__h">타임라인</h3>
+      {timeline.length === 0 ? (
+        <div className="table__msg">타임라인 내역 없음</div>
+      ) : (
+        <ul className="vd__tl">
+          {timeline.map((entry) => (
+            <li key={entry.date} className="vd__tl-entry">
+              <span className="vd__tl-date">{entry.date}</span>
+              <ul className="vd__tl-events">
+                {entry.events.map((ev, i) => (
+                  <li key={i}>{ev}</li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
 
 function SubjectLine({ subject }: { subject: ReportSubject }) {
   return (
@@ -34,6 +175,8 @@ function ExfiltrationReportView({ report }: { report: ExfiltrationReport }) {
       </header>
 
       <p className="vd__summary">{report.summary}</p>
+
+      <RiskBreakdownSection breakdown={report.risk_breakdown} />
 
       <section className="vd__section">
         <h3 className="vd__h">의심 이메일 ({report.suspicious_emails.length})</h3>
@@ -100,6 +243,10 @@ function ExfiltrationReportView({ report }: { report: ExfiltrationReport }) {
           </table>
         )}
       </section>
+
+      <BehaviorSection behavior={report.behavior_summary} />
+
+      <TimelineSection timeline={report.timeline} />
 
       <section className="vd__section">
         <h3 className="vd__h">

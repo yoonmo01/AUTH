@@ -1683,6 +1683,100 @@ body::after {
   color: var(--accent);
 }
 
+/* risk score breakdown */
+.vd__risk {
+  list-style: none;
+  border: 1px solid var(--line);
+}
+
+.vd__risk-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12px;
+}
+.vd__risk-row:last-child {
+  border-bottom: 0;
+}
+
+.vd__risk-label {
+  color: var(--ink-dim);
+}
+
+.vd__risk-val {
+  font-family: var(--f-mono);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.vd__risk-val--gain {
+  color: var(--bad);
+}
+.vd__risk-val--penalty {
+  color: var(--ok);
+}
+
+/* behavior summary */
+.vd__dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.vd__date {
+  padding: 2px 8px;
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  color: var(--warn);
+  background: rgba(194, 121, 11, 0.12);
+}
+
+.vd__section table + table {
+  margin-top: 8px;
+}
+
+.vd__notes {
+  margin-top: 8px;
+  padding: 9px 12px;
+  background: var(--panel-2);
+  border-left: 2px solid var(--line-hot);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-dim);
+}
+
+/* report timeline */
+.vd__tl {
+  list-style: none;
+  border-left: 1px solid var(--line);
+}
+
+.vd__tl-entry {
+  display: flex;
+  gap: 14px;
+  padding: 7px 0 7px 14px;
+}
+
+.vd__tl-date {
+  flex: none;
+  width: 92px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.vd__tl-events {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
 .vd__metrics {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
