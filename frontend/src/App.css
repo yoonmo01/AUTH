@@ -908,6 +908,66 @@ body::after {
   min-height: 0;
 }
 
+/* directory tree (좌하단) */
+.dt,
+.dt__children {
+  list-style: none;
+}
+
+.dt__row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 5px 14px 5px 0;
+  background: none;
+  border: 0;
+  font-family: var(--f-sans);
+  font-size: 12px;
+  color: var(--ink-dim);
+  text-align: left;
+}
+
+.dt__row--dir {
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.dt__row--dir:hover {
+  background: var(--panel-2);
+  color: var(--ink);
+}
+
+.dt__caret {
+  flex: none;
+  width: 12px;
+  font-size: 9px;
+  color: var(--ink-faint);
+}
+
+.dt__cov {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.dt__cov--full {
+  background: var(--ok);
+}
+.dt__cov--partial {
+  background: var(--warn);
+}
+.dt__cov--none {
+  background: var(--line-hot);
+}
+
+.dt__name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .grid {
   display: grid;
   grid-template-columns: var(--tree-w) 1fr;

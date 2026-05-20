@@ -7,6 +7,7 @@ import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { TreeViewer, type TreeSelected } from './TreeViewer'
 import { ResultViewer } from './ResultViewer'
 import { ContentViewer } from './ContentViewer'
+import { DirectoryTree } from './DirectoryTree'
 import type { Summary, FileRecord, Session } from '../types'
 
 const nf = new Intl.NumberFormat('en-US')
@@ -143,15 +144,7 @@ export function Console({ initialSessionId }: Props) {
         <main className="workspace">
           <div className="workspace__left">
             <TreeViewer selected={selected} onSelect={setSelected} />
-            <div className="zone">
-              <div className="zone__tab">DIRECTORY · C:</div>
-              <div className="zone__body">
-                <div className="ph">
-                  <span className="ph__mark" aria-hidden="true">◇</span>
-                  <span className="ph__txt">디렉토리 트리 — S3에서 구현</span>
-                </div>
-              </div>
-            </div>
+            <DirectoryTree />
           </div>
           <ResultViewer
             selected={selected}
