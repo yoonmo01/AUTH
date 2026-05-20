@@ -3,5 +3,124 @@
   "query_text": "김민수 구매팀 퇴사자 데이터 유출 분석",
   "status": "completed",
   "started_at": "2026-05-18T14:02:00",
-  "completed_at": "2026-05-18T14:11:37"
+  "completed_at": "2026-05-18T14:11:37",
+  "verdict": "HIGH",
+  "risk_score": 82,
+  "report_json": {
+    "final_report": {
+      "report_type": "EXFILTRATION_SUSPECTED",
+      "verdict": "HIGH",
+      "risk_score": 82,
+      "risk_breakdown": {
+        "cross_ref": 40,
+        "deleted_files": 30,
+        "anon_channel": 30,
+        "anomaly": 20,
+        "counter_evidence": -38
+      },
+      "subject": {
+        "name": "김민수",
+        "position": "구매팀 대리",
+        "hire_date": "2021-03-02",
+        "resignation_date": "2026-05-09"
+      },
+      "summary": "퇴사 직전 공급사 단가표·거래처 연락처가 익명 채널로 반출된 정황이 확인됨. 일부 파일은 반출 후 원본이 삭제되어 은폐 시도가 동반됨.",
+      "suspicious_emails": [
+        {
+          "email_id": "em-2001",
+          "channel_type": "protonmail",
+          "sender": "minsoo.kim@tradecorp.co.kr",
+          "recipient": "ms.kim.archive@protonmail.com",
+          "subject": "[전달] 1분기 공급사 단가표 파일",
+          "sent_at": "2026-05-02T09:18:40",
+          "has_attachment": true,
+          "suspicion_reason": "회사 단가표를 익명 메일 계정으로 발신, 첨부파일 포함",
+          "risk_weight": 38
+        },
+        {
+          "email_id": "em-2002",
+          "channel_type": "anonymous_channel",
+          "sender": "minsoo.kim@tradecorp.co.kr",
+          "recipient": "drop-7f3a@tmpbox.io",
+          "subject": "참고 자료",
+          "sent_at": "2026-05-05T22:41:10",
+          "has_attachment": true,
+          "suspicion_reason": "익명 임시 메일 채널로 첨부파일 발신",
+          "risk_weight": 24
+        }
+      ],
+      "suspicious_files": [
+        {
+          "file_id": "f-1001",
+          "filename": "2026_1분기_공급사_단가표.xlsx",
+          "relative_path": "Users/minsoo/Documents/구매/2026_1분기_공급사_단가표.xlsx",
+          "sensitivity_score": 0.94,
+          "sensitivity_category": "단가/계약",
+          "matched_keywords": ["공급단가", "원가", "마진율"]
+        },
+        {
+          "file_id": "f-1002",
+          "filename": "거래처_연락처_백업.csv",
+          "relative_path": "Users/minsoo/Desktop/거래처_연락처_백업.csv",
+          "sensitivity_score": 0.88,
+          "sensitivity_category": "고객·거래처 정보",
+          "matched_keywords": ["담당자", "휴대전화", "이메일"]
+        }
+      ],
+      "behavior_summary": {
+        "highlight_dates": ["2026-05-01", "2026-05-02", "2026-05-05"],
+        "deleted_files": [
+          {
+            "original_filename": "2026_1분기_공급사_단가표.xlsx",
+            "deleted_at": "2026-05-06T23:12:40",
+            "file_size_bytes": 184320,
+            "reason": "외부 반출 후 원본 삭제 — 은폐 시도로 추정"
+          }
+        ],
+        "out_of_hours_activity": [
+          {
+            "event_type": "USB 연결",
+            "event_at": "2026-05-01T21:58:30",
+            "detail": "SanDisk Ultra USB 저장장치 연결"
+          },
+          {
+            "event_type": "파일 실행",
+            "event_at": "2026-05-05T22:39:05",
+            "detail": "업무 외 시간 단가표 파일 열람"
+          }
+        ],
+        "notes": "퇴사 1주 전부터 업무 외 시간 활동이 급증, USB 연결 2회·파일 삭제 3건이 집중됨."
+      },
+      "timeline": [
+        {
+          "date": "2026-05-01",
+          "events": ["21:58 USB 저장장치 연결", "22:06 거래처 연락처 파일 USB로 복사"]
+        },
+        {
+          "date": "2026-05-02",
+          "events": ["09:18 공급사 단가표를 익명 메일로 발신"]
+        },
+        {
+          "date": "2026-05-06",
+          "events": ["23:12 단가표 원본 파일 삭제"]
+        }
+      ],
+      "evidence_network": {
+        "nodes": [
+          { "id": "u-1", "type": "USER", "label": "김민수" },
+          { "id": "f-1001", "type": "FILE", "label": "공급사 단가표.xlsx" },
+          { "id": "em-2001", "type": "EMAIL", "label": "[전달] 단가표 파일" },
+          { "id": "ch-proton", "type": "CHANNEL", "label": "ProtonMail 계정" },
+          { "id": "log-del", "type": "LOG", "label": "단가표 삭제 로그" }
+        ],
+        "edges": [
+          { "source": "u-1", "target": "f-1001", "relation": "ACCESSED" },
+          { "source": "u-1", "target": "ch-proton", "relation": "USED_CHANNEL" },
+          { "source": "f-1001", "target": "em-2001", "relation": "ATTACHED" },
+          { "source": "em-2001", "target": "ch-proton", "relation": "SENT_TO" },
+          { "source": "u-1", "target": "log-del", "relation": "DELETED" }
+        ]
+      }
+    }
+  }
 }
