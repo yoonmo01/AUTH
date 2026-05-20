@@ -892,6 +892,22 @@ body::after {
   flex: 1;
 }
 
+/* expanded — 4-zone workspace: 분류 트리 / 디렉토리 트리 / 파일 목록 / 탭 패널 */
+.workspace {
+  display: grid;
+  grid-template-columns: var(--tree-w) minmax(0, 1fr) 420px;
+  gap: 14px;
+  padding: 14px;
+  min-height: 0;
+}
+
+.workspace__left {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  min-height: 0;
+}
+
 .grid {
   display: grid;
   grid-template-columns: var(--tree-w) 1fr;
@@ -1661,6 +1677,34 @@ body::after {
   font-weight: 600;
   letter-spacing: 0.14em;
   color: var(--ink-dim);
+}
+
+.vd__h-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 7px;
+}
+.vd__h-row .vd__h {
+  margin-bottom: 0;
+}
+
+.vd__expand {
+  flex: none;
+  padding: 4px 12px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.vd__expand:hover {
+  background: var(--accent-2);
 }
 
 .vd__section .table {
