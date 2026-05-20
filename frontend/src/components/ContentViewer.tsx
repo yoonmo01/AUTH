@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchFileContent } from '../api/client'
+import { NetworkViewer } from './NetworkViewer'
 import { sanitizeHtml } from '../sanitizeHtml'
 import { formatSize, formatDate } from '../format'
 import type { FileContent, FileRecord } from '../types'
@@ -76,11 +77,13 @@ export function ContentViewer({ selectedFile }: Props) {
               <span className="ph__txt">파일 행을 선택하면 본문이 표시됩니다</span>
             </div>
           )
+        ) : tab === 1 ? (
+          <NetworkViewer />
         ) : (
           <div className="ph">
             <span className="ph__mark" aria-hidden="true">◇</span>
             <span className="ph__txt">
-              {TABS[tab]} — {tab === 1 ? 'S6' : tab === 2 ? 'S7' : 'S9'}에서 구현
+              {TABS[tab]} — {tab === 2 ? 'S7' : 'S9'}에서 구현
             </span>
           </div>
         )}
