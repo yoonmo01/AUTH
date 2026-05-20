@@ -43,6 +43,7 @@ def _fetchall_as_json(cur: psycopg2.extensions.cursor) -> str:
 @tool
 def get_email_history(user_name: str, date_from: str, date_to: str) -> str:
     """email_messages 테이블에서 특정 사용자의 기간 내 이메일 이력을 조회합니다.
+    발신(sender) 및 수신(recipients_to) 모두 포함합니다.
 
     Args:
         user_name: 조회할 사용자 이름 (예: "이지수")
@@ -60,11 +61,11 @@ def get_email_history(user_name: str, date_from: str, date_to: str) -> str:
                 SELECT DISTINCT ON (subject, sender, sent_at)
                   id, subject, sender, recipients_to, sent_at, has_attachments
                 FROM email_messages
-                WHERE sender ILIKE %s
+                WHERE (sender ILIKE %s OR recipients_to::text ILIKE %s)
                   AND sent_at BETWEEN %s AND %s
                 ORDER BY subject, sender, sent_at
                 """,
-                (f"%{user_name}%", date_from, date_to),
+                (f"%{user_name}%", f"%{user_name}%", date_from, date_to),
             )
             return _fetchall_as_json(cur)
     finally:

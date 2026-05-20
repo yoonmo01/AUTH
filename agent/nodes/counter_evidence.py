@@ -29,8 +29,13 @@ def counter_evidence_node(task: dict) -> dict:
         "cross_reference_summary": json.dumps(
             task.get("cross_reference", []), ensure_ascii=False
         ),
-        "suspicious_count": len(task.get("suspicious_channels", [])),
-        "sensitive_count": len(task.get("sensitive_files", [])),
+        "suspicious_channels_detail": json.dumps(
+            task.get("suspicious_channels", []), ensure_ascii=False
+        ),
+        "deleted_files_claims": json.dumps(
+            task.get("behavior_anomalies", {}).get("who_analysis", {}).get("deleted_files", []),
+            ensure_ascii=False,
+        ),
         "supervisor_instructions": task.get("supervisor_instructions", ""),
     }
 

@@ -49,10 +49,11 @@ step5_task: |
   분석 대상: {subject_name}
   교차 대조 결과: {cross_reference_summary}
   의심 채널 수: {suspicious_count} / 민감 파일 수: {sensitive_count}
+  삭제 파일 주장 수: {deleted_files_count}
 
-  STEP 5(반증 검증) 에이전트에게 줄 지침을 작성하세요.
-  - 교차 대조에서 hit된 항목 중 정상으로 해석될 여지는?
-  - 어떤 증거를 추가로 확인해야 하나?
+  STEP 5(사실 검증) 에이전트에게 줄 지침을 작성하세요.
+  - STEP 2~4의 어떤 주장을 우선적으로 DB에서 재확인해야 하는가?
+  - 할루시네이션이 발생할 가능성이 높은 항목은?
 
 
 
