@@ -13,6 +13,14 @@ import type {
   EvidenceEdge,
   AnalysisSummary,
   ReportSubject,
+  RiskBreakdown,
+  BehaviorSummary,
+  DeletedFileEntry,
+  OutOfHoursActivity,
+  ReportTimelineEntry,
+  ChannelType,
+  EvidenceNodeType,
+  EvidenceRelation,
 } from './types'
 
 export type ClassifiedReport =
@@ -58,7 +66,9 @@ function emailOf(v: unknown): SuspiciousEmail {
   const o = objOf(v)
   return {
     email_id: str(o.email_id),
-    channel_type: str(o.channel_type),
+    // Cast: the channel code is whatever the backend sent; unknown values
+    // are tolerated and surface raw in the label map (S2).
+    channel_type: str(o.channel_type) as ChannelType,
     sender: str(o.sender),
     recipient: str(o.recipient),
     subject: str(o.subject),
@@ -67,6 +77,52 @@ function emailOf(v: unknown): SuspiciousEmail {
     suspicion_reason: str(o.suspicion_reason),
     risk_weight: num(o.risk_weight),
   }
+}
+
+function riskBreakdownOf(v: unknown): RiskBreakdown {
+  const o = objOf(v)
+  const keys = ['cross_ref', 'deleted_files', 'anon_channel', 'anomaly', 'counter_evidence'] as const
+  const out: RiskBreakdown = {}
+  for (const k of keys) {
+    if (typeof o[k] === 'number' && Number.isFinite(o[k])) out[k] = o[k] as number
+  }
+  return out
+}
+
+function deletedFileOf(v: unknown): DeletedFileEntry {
+  const o = objOf(v)
+  return {
+    original_filename: str(o.original_filename),
+    deleted_at: str(o.deleted_at),
+    file_size_bytes: num(o.file_size_bytes),
+    reason: str(o.reason),
+  }
+}
+
+function outOfHoursOf(v: unknown): OutOfHoursActivity {
+  const o = objOf(v)
+  return {
+    event_type: str(o.event_type),
+    event_at: str(o.event_at),
+    detail: str(o.detail),
+  }
+}
+
+function behaviorSummaryOf(v: unknown): BehaviorSummary {
+  const o = objOf(v)
+  return {
+    highlight_dates: strArray(o.highlight_dates),
+    deleted_files: (Array.isArray(o.deleted_files) ? o.deleted_files : []).map(deletedFileOf),
+    out_of_hours_activity: (Array.isArray(o.out_of_hours_activity) ? o.out_of_hours_activity : []).map(outOfHoursOf),
+    notes: str(o.notes),
+  }
+}
+
+function timelineOf(v: unknown): ReportTimelineEntry[] {
+  return (Array.isArray(v) ? v : []).map((e) => {
+    const o = objOf(e)
+    return { date: str(o.date), events: strArray(o.events) }
+  })
 }
 
 function fileOf(v: unknown): SuspiciousFile {
@@ -85,11 +141,15 @@ function evidenceNetworkOf(v: unknown): { nodes: EvidenceNode[]; edges: Evidence
   const o = objOf(v)
   const nodes: EvidenceNode[] = (Array.isArray(o.nodes) ? o.nodes : []).map((n) => {
     const x = objOf(n)
-    return { id: str(x.id), type: str(x.type), label: str(x.label) }
+    return { id: str(x.id), type: str(x.type) as EvidenceNodeType, label: str(x.label) }
   })
   const edges: EvidenceEdge[] = (Array.isArray(o.edges) ? o.edges : []).map((e) => {
     const x = objOf(e)
-    return { source: str(x.source), target: str(x.target), relation: str(x.relation) }
+    return {
+      source: str(x.source),
+      target: str(x.target),
+      relation: str(x.relation) as EvidenceRelation,
+    }
   })
   return { nodes, edges }
 }
@@ -106,16 +166,25 @@ function analysisSummaryOf(v: unknown): AnalysisSummary {
 
 const EXFIL_VERDICTS = new Set(['HIGH', 'MEDIUM', 'LOW'])
 
+// The backend wraps the report in a `final_report` key. Unwrap it if
+// present; tolerate an already-unwrapped body too (fixture/transition safety).
+function unwrapFinalReport(raw: unknown): unknown {
+  if (isObject(raw) && 'final_report' in raw) return raw.final_report
+  return raw
+}
+
 /**
  * Classify a raw report_json value into a discriminated union the UI can
- * branch on. Anything that is not a recognised report shape — null, a
- * non-object, or an unknown report_type — falls into the 'invalid' branch.
+ * branch on. The `final_report` wrapper is stripped first. Anything that is
+ * not a recognised report shape — null, a non-object, or an unknown
+ * report_type — falls into the 'invalid' branch.
  */
 export function classifyReport(raw: unknown): ClassifiedReport {
-  if (!isObject(raw)) {
+  const body = unwrapFinalReport(raw)
+  if (!isObject(body)) {
     return { kind: 'invalid', reason: '리포트 데이터가 비어 있거나 객체가 아닙니다' }
   }
-  const reportType = raw.report_type
+  const reportType = body.report_type
 
   if (reportType === 'CLEAN_CERTIFICATE') {
     return {
@@ -123,32 +192,32 @@ export function classifyReport(raw: unknown): ClassifiedReport {
       report: {
         report_type: 'CLEAN_CERTIFICATE',
         verdict: 'CLEAN',
-        risk_score: num(raw.risk_score),
-        risk_breakdown: objOf(raw.risk_breakdown),
-        subject: subjectOf(raw.subject),
-        summary: str(raw.summary),
-        analysis_summary: analysisSummaryOf(raw.analysis_summary),
-        issued_at: str(raw.issued_at),
+        risk_score: num(body.risk_score),
+        risk_breakdown: riskBreakdownOf(body.risk_breakdown),
+        subject: subjectOf(body.subject),
+        summary: str(body.summary),
+        analysis_summary: analysisSummaryOf(body.analysis_summary),
+        issued_at: str(body.issued_at),
       },
     }
   }
 
   if (reportType === 'EXFILTRATION_SUSPECTED') {
-    const verdict = str(raw.verdict)
+    const verdict = str(body.verdict)
     return {
       kind: 'exfiltration',
       report: {
         report_type: 'EXFILTRATION_SUSPECTED',
         verdict: (EXFIL_VERDICTS.has(verdict) ? verdict : 'LOW') as 'HIGH' | 'MEDIUM' | 'LOW',
-        risk_score: num(raw.risk_score),
-        risk_breakdown: objOf(raw.risk_breakdown),
-        subject: subjectOf(raw.subject),
-        summary: str(raw.summary),
-        suspicious_emails: (Array.isArray(raw.suspicious_emails) ? raw.suspicious_emails : []).map(emailOf),
-        suspicious_files: (Array.isArray(raw.suspicious_files) ? raw.suspicious_files : []).map(fileOf),
-        behavior_summary: objOf(raw.behavior_summary),
-        timeline: Array.isArray(raw.timeline) ? raw.timeline : [],
-        evidence_network: evidenceNetworkOf(raw.evidence_network),
+        risk_score: num(body.risk_score),
+        risk_breakdown: riskBreakdownOf(body.risk_breakdown),
+        subject: subjectOf(body.subject),
+        summary: str(body.summary),
+        suspicious_emails: (Array.isArray(body.suspicious_emails) ? body.suspicious_emails : []).map(emailOf),
+        suspicious_files: (Array.isArray(body.suspicious_files) ? body.suspicious_files : []).map(fileOf),
+        behavior_summary: behaviorSummaryOf(body.behavior_summary),
+        timeline: timelineOf(body.timeline),
+        evidence_network: evidenceNetworkOf(body.evidence_network),
       },
     }
   }

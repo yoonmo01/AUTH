@@ -69,6 +69,60 @@ describe('classifyReport', () => {
     expect(classifyReport({ report_type: 'SOMETHING_ELSE' }).kind).toBe('invalid')
     expect(classifyReport({ foo: 'bar' }).kind).toBe('invalid')
   })
+
+  it('unwraps a final_report wrapper for an EXFILTRATION report', () => {
+    const out = classifyReport({
+      final_report: { report_type: 'EXFILTRATION_SUSPECTED', verdict: 'MEDIUM' },
+    })
+    expect(out.kind).toBe('exfiltration')
+    if (out.kind !== 'exfiltration') throw new Error('unreachable')
+    expect(out.report.verdict).toBe('MEDIUM')
+  })
+
+  it('unwraps a final_report wrapper for a CLEAN report', () => {
+    const out = classifyReport({
+      final_report: { report_type: 'CLEAN_CERTIFICATE', verdict: 'CLEAN' },
+    })
+    expect(out.kind).toBe('clean')
+  })
+
+  it('treats a final_report wrapper with a null body as invalid', () => {
+    expect(classifyReport({ final_report: null }).kind).toBe('invalid')
+  })
+
+  it('parses risk_breakdown, behavior_summary and timeline from a wrapped report', () => {
+    const out = classifyReport({
+      final_report: {
+        report_type: 'EXFILTRATION_SUSPECTED',
+        verdict: 'HIGH',
+        risk_breakdown: { cross_ref: 40, counter_evidence: -20, bogus: 'x' },
+        behavior_summary: {
+          highlight_dates: ['2026-05-01'],
+          deleted_files: [
+            { original_filename: 'a.xlsx', deleted_at: '2026-05-06', file_size_bytes: 100, reason: '은폐' },
+          ],
+          out_of_hours_activity: [{ event_type: 'USB 연결', event_at: '2026-05-01T22:00', detail: 'd' }],
+          notes: '메모',
+        },
+        timeline: [{ date: '2026-05-01', events: ['ev1', 'ev2'] }],
+      },
+    })
+    if (out.kind !== 'exfiltration') throw new Error('unreachable')
+    expect(out.report.risk_breakdown).toEqual({ cross_ref: 40, counter_evidence: -20 })
+    expect(out.report.behavior_summary.deleted_files).toHaveLength(1)
+    expect(out.report.behavior_summary.notes).toBe('메모')
+    expect(out.report.timeline[0].events).toEqual(['ev1', 'ev2'])
+  })
+
+  it('defaults missing behavior_summary and timeline to empty structures', () => {
+    const out = classifyReport({ report_type: 'EXFILTRATION_SUSPECTED', verdict: 'LOW' })
+    if (out.kind !== 'exfiltration') throw new Error('unreachable')
+    expect(out.report.behavior_summary.deleted_files).toEqual([])
+    expect(out.report.behavior_summary.out_of_hours_activity).toEqual([])
+    expect(out.report.behavior_summary.highlight_dates).toEqual([])
+    expect(out.report.timeline).toEqual([])
+    expect(out.report.risk_breakdown).toEqual({})
+  })
 })
 
 describe('selectLatestCompletedSession', () => {

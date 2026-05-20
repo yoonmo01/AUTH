@@ -147,10 +147,15 @@ export interface Session {
 }
 
 // ============================================================
-// Final report (agent/prompts/main.yaml — report_task)
+// Final report — authoritative schema: final_report_schema.md
 // ============================================================
 
 export type Verdict = 'HIGH' | 'MEDIUM' | 'LOW' | 'CLEAN'
+
+export type ChannelType = 'protonmail' | 'tmpbox' | 'anonymous_channel'
+export type EvidenceNodeType = 'USER' | 'FILE' | 'EMAIL' | 'CHANNEL' | 'LOG'
+export type EvidenceRelation =
+  | 'USED_CHANNEL' | 'SENT_TO' | 'ATTACHED' | 'ACCESSED' | 'DELETED'
 
 export interface ReportSubject {
   name: string
@@ -159,9 +164,18 @@ export interface ReportSubject {
   resignation_date: string
 }
 
+// Risk score components. All optional — a report may omit any of them.
+export interface RiskBreakdown {
+  cross_ref?: number
+  deleted_files?: number
+  anon_channel?: number
+  anomaly?: number
+  counter_evidence?: number
+}
+
 export interface SuspiciousEmail {
   email_id: string
-  channel_type: string
+  channel_type: ChannelType
   sender: string
   recipient: string
   subject: string
@@ -180,29 +194,56 @@ export interface SuspiciousFile {
   matched_keywords: string[]
 }
 
+export interface DeletedFileEntry {
+  original_filename: string
+  deleted_at: string
+  file_size_bytes: number
+  reason: string
+}
+
+export interface OutOfHoursActivity {
+  event_type: string
+  event_at: string
+  detail: string
+}
+
+export interface BehaviorSummary {
+  highlight_dates: string[]
+  deleted_files: DeletedFileEntry[]
+  out_of_hours_activity: OutOfHoursActivity[]
+  notes: string
+}
+
+// Report timeline — date-grouped event strings. Distinct from the
+// /timeline endpoint's ActivityEvent (see above).
+export interface ReportTimelineEntry {
+  date: string
+  events: string[]
+}
+
 export interface EvidenceNode {
   id: string
-  type: string
+  type: EvidenceNodeType
   label: string
 }
 
 export interface EvidenceEdge {
   source: string
   target: string
-  relation: string
+  relation: EvidenceRelation
 }
 
 export interface ExfiltrationReport {
   report_type: 'EXFILTRATION_SUSPECTED'
   verdict: 'HIGH' | 'MEDIUM' | 'LOW'
   risk_score: number
-  risk_breakdown: Record<string, unknown>
+  risk_breakdown: RiskBreakdown
   subject: ReportSubject
   summary: string
   suspicious_emails: SuspiciousEmail[]
   suspicious_files: SuspiciousFile[]
-  behavior_summary: Record<string, unknown>
-  timeline: unknown[]
+  behavior_summary: BehaviorSummary
+  timeline: ReportTimelineEntry[]
   evidence_network: { nodes: EvidenceNode[]; edges: EvidenceEdge[] }
 }
 
@@ -217,7 +258,7 @@ export interface CleanReport {
   report_type: 'CLEAN_CERTIFICATE'
   verdict: 'CLEAN'
   risk_score: number
-  risk_breakdown: Record<string, unknown>
+  risk_breakdown: RiskBreakdown
   subject: ReportSubject
   summary: string
   analysis_summary: AnalysisSummary
