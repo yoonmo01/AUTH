@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchSummary, fetchSessions } from '../api/client'
 import { selectLatestCompletedSession } from '../report'
@@ -38,6 +38,35 @@ function Readout({ label, value, loading, accent }: ReadoutProps) {
   )
 }
 
+// Left column width bounds for the expanded workspace.
+const LEFT_MIN = 200
+const LEFT_MAX = 520
+const LEFT_DEFAULT = 280
+
+// Draggable divider between the left column and the center file list.
+function ResizeHandle({ onDrag }: { onDrag: (clientX: number) => void }) {
+  const [dragging, setDragging] = useState(false)
+  return (
+    <div
+      className={`rsz${dragging ? ' rsz--on' : ''}`}
+      role="separator"
+      aria-orientation="vertical"
+      onPointerDown={(e) => {
+        e.preventDefault()
+        e.currentTarget.setPointerCapture(e.pointerId)
+        setDragging(true)
+      }}
+      onPointerMove={(e) => {
+        if (dragging) onDrag(e.clientX)
+      }}
+      onPointerUp={(e) => {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+        setDragging(false)
+      }}
+    />
+  )
+}
+
 type Props = {
   // Session handed off by the onboarding flow when an analysis completes.
   // When null, the latest completed session is auto-selected instead.
@@ -65,6 +94,16 @@ export function Console({ initialSessionId }: Props) {
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, 300)
   const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null)
+
+  // Resizable left column width.
+  const [leftWidth, setLeftWidth] = useState(LEFT_DEFAULT)
+  const workspaceRef = useRef<HTMLElement>(null)
+  function handleResize(clientX: number) {
+    const rect = workspaceRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const next = clientX - rect.left
+    setLeftWidth(Math.min(LEFT_MAX, Math.max(LEFT_MIN, next)))
+  }
 
   const { data: sessions } = useQuery<Session[]>({
     queryKey: ['sessions'],
@@ -145,11 +184,18 @@ export function Console({ initialSessionId }: Props) {
       {layout === 'focused' ? (
         <main className="focusview">{tabPanel}</main>
       ) : (
-        <main className="workspace">
+        <main
+          className="workspace"
+          ref={workspaceRef}
+          style={{
+            gridTemplateColumns: `${leftWidth}px 8px minmax(0, 1fr) 420px`,
+          }}
+        >
           <div className="workspace__left">
             <TreeViewer selected={selected} onSelect={setSelected} />
             <DirectoryTree />
           </div>
+          <ResizeHandle onDrag={handleResize} />
           <ResultViewer
             selected={selected}
             query={debouncedSearch}

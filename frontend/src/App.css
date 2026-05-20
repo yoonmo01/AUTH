@@ -939,13 +939,39 @@ select.iform__input {
   flex: 1;
 }
 
-/* expanded — 4-zone workspace: 분류 트리 / 디렉토리 트리 / 파일 목록 / 탭 패널 */
+/* expanded — 4-zone workspace: 분류 트리 / 디렉토리 트리 / 파일 목록 / 탭 패널.
+   grid-template-columns is set inline (resizable left column). */
 .workspace {
   display: grid;
-  grid-template-columns: var(--tree-w) minmax(0, 1fr) 420px;
   gap: 14px;
   padding: 14px;
   min-height: 0;
+}
+
+/* draggable divider between the left column and the center */
+.rsz {
+  align-self: stretch;
+  position: relative;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.rsz::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--line);
+  transition: background 0.15s, width 0.15s;
+}
+
+.rsz:hover::before,
+.rsz--on::before {
+  width: 3px;
+  background: var(--accent);
 }
 
 .workspace__left {
