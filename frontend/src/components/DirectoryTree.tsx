@@ -1,18 +1,17 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { fetchFiles } from '../api/client'
+import { fetchDirectoryStructure } from '../api/client'
 import { buildDirectoryTree, type TreeNode } from '../directoryTree'
-import type { FileRecord } from '../types'
 
 function TreeRow({
   node,
   depth,
-  collapsed,
+  expanded,
   onToggle,
 }: {
   node: TreeNode
   depth: number
-  collapsed: Set<string>
+  expanded: Set<string>
   onToggle: (path: string) => void
 }) {
   const pad = { paddingLeft: `${12 + depth * 14}px` }
@@ -33,7 +32,7 @@ function TreeRow({
     )
   }
 
-  const isCollapsed = collapsed.has(node.path)
+  const isOpen = expanded.has(node.path)
   return (
     <li>
       <button
@@ -43,7 +42,7 @@ function TreeRow({
         onClick={() => onToggle(node.path)}
       >
         <span className="dt__caret" aria-hidden="true">
-          {node.children.length > 0 ? (isCollapsed ? '▸' : '▾') : ''}
+          {node.children.length > 0 ? (isOpen ? '▾' : '▸') : ''}
         </span>
         <span
           className={`dt__cov dt__cov--${node.coverage}`}
@@ -52,14 +51,14 @@ function TreeRow({
         />
         <span className="dt__name" title={node.name}>{node.name}</span>
       </button>
-      {!isCollapsed && node.children.length > 0 && (
+      {isOpen && node.children.length > 0 && (
         <ul className="dt__children">
           {node.children.map((c) => (
             <TreeRow
               key={c.path}
               node={c}
               depth={depth + 1}
-              collapsed={collapsed}
+              expanded={expanded}
               onToggle={onToggle}
             />
           ))}
@@ -70,14 +69,15 @@ function TreeRow({
 }
 
 export function DirectoryTree() {
-  const { data, isLoading, isError } = useQuery<FileRecord[]>({
-    queryKey: ['files', 'directory-tree'],
-    queryFn: () => fetchFiles('', undefined, 1000),
+  const { data, isLoading, isError } = useQuery<unknown>({
+    queryKey: ['directory-structure'],
+    queryFn: fetchDirectoryStructure,
   })
 
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  // Folders start collapsed — the real structure has thousands of files.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
   function toggle(path: string) {
-    setCollapsed((prev) => {
+    setExpanded((prev) => {
       const next = new Set(prev)
       if (next.has(path)) next.delete(path)
       else next.add(path)
@@ -85,7 +85,7 @@ export function DirectoryTree() {
     })
   }
 
-  const root = useMemo(() => buildDirectoryTree(data ?? []), [data])
+  const root = useMemo(() => buildDirectoryTree(data), [data])
 
   return (
     <div className="zone">
@@ -96,7 +96,7 @@ export function DirectoryTree() {
         ) : isLoading ? (
           <div className="tree__msg">불러오는 중…</div>
         ) : root.children.length === 0 ? (
-          <div className="tree__msg">표시할 파일이 없습니다</div>
+          <div className="tree__msg">표시할 디렉토리 구조가 없습니다</div>
         ) : (
           <ul className="dt">
             {root.children.map((c) => (
@@ -104,7 +104,7 @@ export function DirectoryTree() {
                 key={c.path}
                 node={c}
                 depth={0}
-                collapsed={collapsed}
+                expanded={expanded}
                 onToggle={toggle}
               />
             ))}

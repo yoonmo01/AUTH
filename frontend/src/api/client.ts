@@ -70,6 +70,11 @@ export const fetchFile = (id: string): Promise<FileRecord> =>
 export const fetchFileContent = (id: string): Promise<FileContent> =>
   get(`/files/${id}/content`)
 
+// Raw nested C: directory structure (stru.json shape) — consumed by the
+// directory tree builder, which validates the shape.
+export const fetchDirectoryStructure = (): Promise<unknown> =>
+  get('/files/structure')
+
 // ── Emails ───────────────────────────────────────────────────
 export const fetchEmails = (q: string, limit = 50): Promise<EmailRecord[]> => {
   const params = new URLSearchParams({ q, limit: String(limit) })
