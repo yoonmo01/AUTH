@@ -878,8 +878,19 @@ body::after {
 }
 
 /* ============================================================
-   MAIN — 3-panel grid
+   MAIN — console layouts
    ============================================================ */
+
+/* focused — verdict-centric entry: tab panel only (콘솔 개편 S1) */
+.focusview {
+  display: flex;
+  min-height: 0;
+  padding: 14px;
+}
+
+.focusview .zone {
+  flex: 1;
+}
 
 .grid {
   display: grid;
