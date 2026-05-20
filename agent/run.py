@@ -22,15 +22,6 @@ from pathlib import Path
 VERBOSE = True   # False로 바꾸면 Tool 입출력 로그 꺼짐
 # ────────────────────────────────────────────────────────────
 
-# Windows 콘솔 UTF-8 출력
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="[INFO] %(asctime)s %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    stream=sys.stdout,
-)
 logger = logging.getLogger("agent.orchestrator")
 
 from dotenv import load_dotenv
@@ -39,6 +30,15 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 load_dotenv(ROOT / ".env")
+
+if __name__ == "__main__":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[INFO] %(asctime)s %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        stream=sys.stdout,
+    )
 
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.outputs import LLMResult

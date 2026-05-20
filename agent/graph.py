@@ -257,8 +257,13 @@ def step5_node(state: InvestigationState) -> dict:
         "cross_reference_summary": json.dumps(state.get("cross_reference", []), ensure_ascii=False),
         "suspicious_count": len(state.get("suspicious_channels", [])),
         "sensitive_count": len(state.get("sensitive_files", [])),
+        "deleted_files_count": len(
+            state.get("behavior_anomalies", {})
+                .get("who_analysis", {})
+                .get("deleted_files", [])
+        ),
     }
-    print(f"\n  [Main Agent] STEP 5 반증 검증 지침 추론 중...")
+    print(f"\n  [Main Agent] STEP 5 사실 검증 지침 추론 중...")
     instructions = _supervisor_reason(
         system_prompt=main_prompt["supervisor_system"],
         user_prompt=main_prompt["step5_task"].format(**ctx),

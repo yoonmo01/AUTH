@@ -12,18 +12,23 @@
 #   /summary, /files/*, /emails/*, /entities
 #               → api/evidence.py (증거 데이터 조회)
 import sys
+from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.ingest   import router as ingest_router
-from api.cases    import router as cases_router
-from api.sessions import router as sessions_router
-from api.findings import router as findings_router
-from api.search   import router as search_router
-from api.graph    import router as graph_router
-from api.evidence import router as evidence_router
+from api.ingest        import router as ingest_router
+from api.cases         import router as cases_router
+from api.sessions      import router as sessions_router
+from api.findings      import router as findings_router
+from api.search        import router as search_router
+from api.graph         import router as graph_router
+from api.evidence      import router as evidence_router
+from api.agent_runner  import router as agent_runner_router
 
 app = FastAPI(title="HYENA Investigation API", version="1.0.0")
 app.add_middleware(
@@ -40,6 +45,7 @@ app.include_router(findings_router)
 app.include_router(search_router)
 app.include_router(graph_router)
 app.include_router(evidence_router)
+app.include_router(agent_runner_router)
 
 if __name__ == "__main__":
     import uvicorn
