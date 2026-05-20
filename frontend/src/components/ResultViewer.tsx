@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { fetchFiles, fetchEmails, fetchEntities, fetchSessions } from '../api/client'
 import { categoryLabel } from '../categories'
 import { formatSize, formatDate } from '../format'
+import { isFilenameCellTarget } from '../filenameCell'
 import { VerdictBadge } from './VerdictBadge'
+import { FileBodyModal } from './FileBodyModal'
 import type { FileRecord, EmailRecord, EntityRecord, Session } from '../types'
 import type { TreeSelected } from './TreeViewer'
 
@@ -84,6 +87,9 @@ export function ResultViewer({
 
   const tableClass = `table${isFetching ? ' is-fetching' : ''}`
   const isEmpty = !data || data.rows.length === 0
+
+  // File body popup — opened by double-clicking a filename cell.
+  const [popupFile, setPopupFile] = useState<FileRecord | null>(null)
 
   return (
     <div className="zone">
@@ -199,9 +205,14 @@ export function ResultViewer({
                   key={f.id}
                   className={`table__row${selectedFileId === f.id ? ' is-sel' : ''}`}
                   onClick={() => onSelectFile(f)}
+                  onDoubleClick={(e) => {
+                    if (isFilenameCellTarget(e.target)) setPopupFile(f)
+                  }}
                   aria-selected={selectedFileId === f.id}
                 >
-                  <td className="table__name" title={f.filename}>{f.filename}</td>
+                  <td className="table__name" data-cell="filename" title={f.filename}>
+                    {f.filename}
+                  </td>
                   <td><span className="table__cat">{categoryLabel(f.category)}</span></td>
                   <td className="table__num">{formatSize(f.file_size)}</td>
                   <td className="table__num">{formatDate(f.file_modified_at)}</td>
@@ -212,6 +223,9 @@ export function ResultViewer({
           </table>
         )}
       </div>
+      {popupFile && (
+        <FileBodyModal file={popupFile} onClose={() => setPopupFile(null)} />
+      )}
     </div>
   )
 }
