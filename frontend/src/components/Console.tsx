@@ -2,11 +2,8 @@ import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchSummary, fetchSessions } from '../api/client'
 import { selectLatestCompletedSession } from '../report'
-import { useDebouncedValue } from '../hooks/useDebouncedValue'
-import { TreeViewer, type TreeSelected } from './TreeViewer'
-import { ResultViewer } from './ResultViewer'
 import { ContentViewer } from './ContentViewer'
-import type { Summary, FileRecord, Session } from '../types'
+import type { Summary, Session } from '../types'
 
 const nf = new Intl.NumberFormat('en-US')
 
@@ -36,30 +33,26 @@ function Readout({ label, value, loading, accent }: ReadoutProps) {
 }
 
 type Props = {
-  // Session to open on mount — supplied when the onboarding flow hands off
-  // a freshly completed analysis. When null, the latest completed session
-  // is auto-selected instead.
+  // Session handed off by the onboarding flow when an analysis completes.
+  // When null, the latest completed session is auto-selected instead.
   initialSessionId?: string | null
 }
 
+// Investigation console. 콘솔 개편 S1: after analysis the console opens in a
+// verdict-focused layout — only the 판정/네트워크/타임라인 tab panel. The
+// 4-zone workspace arrives in S2.
 export function Console({ initialSessionId }: Props) {
   const { data, isLoading, isError } = useQuery<Summary>({
     queryKey: ['summary'],
     queryFn: fetchSummary,
   })
 
-  const [selected, setSelected] = useState<TreeSelected>({ kind: 'all' })
-  const [search, setSearch] = useState('')
-  const debouncedSearch = useDebouncedValue(search, 300)
-  const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null)
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
     initialSessionId ?? null,
   )
-  const [contentTab, setContentTab] = useState(initialSessionId != null ? 3 : 0)
+  const [contentTab, setContentTab] = useState(0)
   const [sessionAutoPicked, setSessionAutoPicked] = useState(initialSessionId != null)
 
-  // Auto-select the latest completed session once on launch so the
-  // 판정 tab opens populated. Skipped when the flow handed off a session.
   const { data: sessions } = useQuery<Session[]>({
     queryKey: ['sessions'],
     queryFn: fetchSessions,
@@ -67,17 +60,9 @@ export function Console({ initialSessionId }: Props) {
   useEffect(() => {
     if (sessionAutoPicked || !sessions) return
     const latest = selectLatestCompletedSession(sessions)
-    if (latest) {
-      setSelectedSessionId(latest.id)
-      setContentTab(3)
-    }
+    if (latest) setSelectedSessionId(latest.id)
     setSessionAutoPicked(true)
   }, [sessions, sessionAutoPicked])
-
-  function handleSelectSession(id: string) {
-    setSelectedSessionId(id)
-    setContentTab(3)
-  }
 
   const status = isError ? 'bad' : isLoading ? 'warn' : 'ok'
   const statusText = isError
@@ -126,28 +111,12 @@ export function Console({ initialSessionId }: Props) {
         </div>
       </header>
 
-      <main className="grid">
-        <aside className="col col--tree">
-          <TreeViewer selected={selected} onSelect={setSelected} />
-        </aside>
-        <section className="col col--work">
-          <ResultViewer
-            selected={selected}
-            query={debouncedSearch}
-            search={search}
-            onSearch={setSearch}
-            selectedFileId={selectedFile?.id ?? null}
-            onSelectFile={setSelectedFile}
-            selectedSessionId={selectedSessionId}
-            onSelectSession={handleSelectSession}
-          />
-          <ContentViewer
-            selectedFile={selectedFile}
-            selectedSessionId={selectedSessionId}
-            tab={contentTab}
-            onTab={setContentTab}
-          />
-        </section>
+      <main className="focusview">
+        <ContentViewer
+          selectedSessionId={selectedSessionId}
+          tab={contentTab}
+          onTab={setContentTab}
+        />
       </main>
 
       <footer className="statusbar">
