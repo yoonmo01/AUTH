@@ -3,7 +3,7 @@ import { validateInvestigationForm } from './investigationForm'
 import type { InvestigationInput } from './flow'
 
 const VALID: InvestigationInput = {
-  evidenceImagePath: 'C:/cases/hyena.E01',
+  evidenceRootPath: 'HYENA_C드라이브',
   name: '김민수',
   position: '구매팀 대리',
   hireDate: '2021-03-02',
@@ -17,10 +17,10 @@ describe('validateInvestigationForm', () => {
     expect(errors).toEqual({})
   })
 
-  it('flags a missing evidence image path', () => {
-    const { ok, errors } = validateInvestigationForm({ ...VALID, evidenceImagePath: '   ' })
+  it('flags a missing evidence root folder', () => {
+    const { ok, errors } = validateInvestigationForm({ ...VALID, evidenceRootPath: '   ' })
     expect(ok).toBe(false)
-    expect(errors.evidenceImagePath).toBeDefined()
+    expect(errors.evidenceRootPath).toBeDefined()
   })
 
   it('flags a missing name', () => {
@@ -64,7 +64,7 @@ describe('validateInvestigationForm', () => {
 
   it('reports every empty field at once', () => {
     const { ok, errors } = validateInvestigationForm({
-      evidenceImagePath: '',
+      evidenceRootPath: '',
       name: '',
       position: '',
       hireDate: '',
@@ -72,7 +72,7 @@ describe('validateInvestigationForm', () => {
     })
     expect(ok).toBe(false)
     expect(Object.keys(errors).sort()).toEqual(
-      ['evidenceImagePath', 'hireDate', 'name', 'position', 'resignationDate'].sort(),
+      ['evidenceRootPath', 'hireDate', 'name', 'position', 'resignationDate'].sort(),
     )
   })
 })

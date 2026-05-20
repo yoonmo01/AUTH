@@ -462,6 +462,12 @@ body::after {
   color: var(--ink-faint);
 }
 
+select.iform__input {
+  cursor: pointer;
+  font-family: var(--f-mono);
+  font-size: 12px;
+}
+
 .iform__input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);

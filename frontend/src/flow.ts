@@ -5,7 +5,7 @@
 export type FlowPhase = 'landing' | 'form' | 'etl' | 'loading' | 'console'
 
 export interface InvestigationInput {
-  evidenceImagePath: string
+  evidenceRootPath: string
   name: string
   position: string
   hireDate: string
