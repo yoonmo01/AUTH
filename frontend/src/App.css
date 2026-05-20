@@ -968,6 +968,89 @@ body::after {
   text-overflow: ellipsis;
 }
 
+/* ============================================================
+   MODAL — file body popup
+   ============================================================ */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 36px;
+  background: rgba(22, 34, 43, 0.44);
+  animation: fade-in 0.16s var(--ease);
+}
+
+.modal__panel {
+  display: flex;
+  flex-direction: column;
+  width: min(840px, 100%);
+  max-height: 100%;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 26px 64px -20px rgba(22, 34, 43, 0.55);
+  animation: rise 0.22s var(--ease) both;
+}
+
+.modal__head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 38px;
+  padding: 0 8px 0 14px;
+  background: linear-gradient(180deg, var(--panel-2), #ffffff);
+  border-bottom: 1px solid var(--line);
+}
+
+.modal__title {
+  min-width: 0;
+  font-family: var(--f-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modal__close {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+.modal__close:hover {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+.modal__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .grid {
   display: grid;
   grid-template-columns: var(--tree-w) 1fr;
