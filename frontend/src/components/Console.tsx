@@ -2,8 +2,12 @@ import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchSummary, fetchSessions } from '../api/client'
 import { selectLatestCompletedSession } from '../report'
+import { toggleLayout, initialConsoleLayout, type ConsoleLayout } from '../consoleLayout'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
+import { TreeViewer, type TreeSelected } from './TreeViewer'
+import { ResultViewer } from './ResultViewer'
 import { ContentViewer } from './ContentViewer'
-import type { Summary, Session } from '../types'
+import type { Summary, FileRecord, Session } from '../types'
 
 const nf = new Intl.NumberFormat('en-US')
 
@@ -38,20 +42,27 @@ type Props = {
   initialSessionId?: string | null
 }
 
-// Investigation console. 콘솔 개편 S1: after analysis the console opens in a
-// verdict-focused layout — only the 판정/네트워크/타임라인 tab panel. The
-// 4-zone workspace arrives in S2.
+// Investigation console. Two layouts (./consoleLayout): 'focused' opens just
+// the verdict tab panel; 'expanded' is the 4-zone workspace reached via the
+// "모두 보기" button in the verdict panel.
 export function Console({ initialSessionId }: Props) {
   const { data, isLoading, isError } = useQuery<Summary>({
     queryKey: ['summary'],
     queryFn: fetchSummary,
   })
 
+  const [layout, setLayout] = useState<ConsoleLayout>(initialConsoleLayout)
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
     initialSessionId ?? null,
   )
   const [contentTab, setContentTab] = useState(0)
   const [sessionAutoPicked, setSessionAutoPicked] = useState(initialSessionId != null)
+
+  // Expanded-workspace state — tree navigation, file search, file selection.
+  const [selected, setSelected] = useState<TreeSelected>({ kind: 'all' })
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 300)
+  const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null)
 
   const { data: sessions } = useQuery<Session[]>({
     queryKey: ['sessions'],
@@ -64,6 +75,11 @@ export function Console({ initialSessionId }: Props) {
     setSessionAutoPicked(true)
   }, [sessions, sessionAutoPicked])
 
+  function handleSelectSession(id: string) {
+    setSelectedSessionId(id)
+    setContentTab(0)
+  }
+
   const status = isError ? 'bad' : isLoading ? 'warn' : 'ok'
   const statusText = isError
     ? 'DB · OFFLINE'
@@ -75,6 +91,16 @@ export function Console({ initialSessionId }: Props) {
     : isLoading
       ? '증거 메타데이터 조회 중…'
       : '준비됨'
+
+  const tabPanel = (
+    <ContentViewer
+      selectedSessionId={selectedSessionId}
+      tab={contentTab}
+      onTab={setContentTab}
+      layout={layout}
+      onToggleLayout={() => setLayout(toggleLayout(layout))}
+    />
+  )
 
   return (
     <div className="app">
@@ -111,13 +137,35 @@ export function Console({ initialSessionId }: Props) {
         </div>
       </header>
 
-      <main className="focusview">
-        <ContentViewer
-          selectedSessionId={selectedSessionId}
-          tab={contentTab}
-          onTab={setContentTab}
-        />
-      </main>
+      {layout === 'focused' ? (
+        <main className="focusview">{tabPanel}</main>
+      ) : (
+        <main className="workspace">
+          <div className="workspace__left">
+            <TreeViewer selected={selected} onSelect={setSelected} />
+            <div className="zone">
+              <div className="zone__tab">DIRECTORY · C:</div>
+              <div className="zone__body">
+                <div className="ph">
+                  <span className="ph__mark" aria-hidden="true">◇</span>
+                  <span className="ph__txt">디렉토리 트리 — S3에서 구현</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <ResultViewer
+            selected={selected}
+            query={debouncedSearch}
+            search={search}
+            onSearch={setSearch}
+            selectedFileId={selectedFile?.id ?? null}
+            onSelectFile={setSelectedFile}
+            selectedSessionId={selectedSessionId}
+            onSelectSession={handleSelectSession}
+          />
+          {tabPanel}
+        </main>
+      )}
 
       <footer className="statusbar">
         <span className="statusbar__tag">HYENA INVESTIGATION CONSOLE</span>
