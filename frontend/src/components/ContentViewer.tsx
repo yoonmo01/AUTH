@@ -1,8 +1,8 @@
-import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchFileContent } from '../api/client'
 import { NetworkViewer } from './NetworkViewer'
 import { TimelineViewer } from './TimelineViewer'
+import { VerdictViewer } from './VerdictViewer'
 import { sanitizeHtml } from '../sanitizeHtml'
 import { formatSize, formatDate } from '../format'
 import type { FileContent, FileRecord } from '../types'
@@ -11,6 +11,9 @@ const TABS = ['파일 본문', '네트워크', '타임라인', '판정'] as cons
 
 type Props = {
   selectedFile: FileRecord | null
+  selectedSessionId: string | null
+  tab: number
+  onTab: (tab: number) => void
 }
 
 function MetaBar({ file }: { file: FileRecord }) {
@@ -51,9 +54,7 @@ function FileBody({ file }: { file: FileRecord }) {
   )
 }
 
-export function ContentViewer({ selectedFile }: Props) {
-  const [tab, setTab] = useState(0)
-
+export function ContentViewer({ selectedFile, selectedSessionId, tab, onTab }: Props) {
   return (
     <div className="zone">
       <div className="zone__tabs">
@@ -62,7 +63,7 @@ export function ContentViewer({ selectedFile }: Props) {
             key={label}
             type="button"
             className={`t${i === tab ? ' t--on' : ''}`}
-            onClick={() => setTab(i)}
+            onClick={() => onTab(i)}
           >
             {label}
           </button>
@@ -83,10 +84,7 @@ export function ContentViewer({ selectedFile }: Props) {
         ) : tab === 2 ? (
           <TimelineViewer />
         ) : (
-          <div className="ph">
-            <span className="ph__mark" aria-hidden="true">◇</span>
-            <span className="ph__txt">{TABS[tab]} — S9에서 구현</span>
-          </div>
+          <VerdictViewer sessionId={selectedSessionId} />
         )}
       </div>
     </div>

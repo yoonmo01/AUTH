@@ -1,0 +1,83 @@
+{
+  "final_report": {
+    "report_type": "string",
+    "verdict": "string",
+    "risk_score": "number",
+    "risk_breakdown": {
+      "cross_ref": "number",
+      "deleted_files": "number",
+      "anon_channel": "number"
+    },
+    "subject": {
+      "name": "string",
+      "position": "string",
+      "hire_date": "string",
+      "resignation_date": "string"
+    },
+    "summary": "string",
+    "suspicious_emails": [
+      {
+        "email_id": "string",
+        "channel_type": "string",
+        "sender": "string",
+        "recipient": "string",
+        "subject": "string",
+        "sent_at": "string (ISO8601)",
+        "has_attachment": "boolean",
+        "suspicion_reason": "string",
+        "risk_weight": "number"
+      }
+    ],
+    "suspicious_files": [
+      {
+        "file_id": "string",
+        "filename": "string",
+        "relative_path": "string",
+        "sensitivity_score": "number (0.0~1.0)",
+        "sensitivity_category": "string",
+        "matched_keywords": ["string"]
+      }
+    ],
+    "behavior_summary": {
+      "highlight_dates": ["string (YYYY-MM-DD)"],
+      "deleted_files": [
+        {
+          "original_filename": "string",
+          "deleted_at": "string (ISO8601)",
+          "file_size_bytes": "number",
+          "reason": "string"
+        }
+      ],
+      "out_of_hours_activity": [
+        {
+          "event_type": "string",
+          "event_at": "string (ISO8601)",
+          "detail": "string"
+        }
+      ],
+      "notes": "string"
+    },
+    "timeline": [
+      {
+        "date": "string (YYYY-MM-DD)",
+        "events": ["string"]
+      }
+    ],
+    "evidence_network": {
+      "nodes": [
+        {
+          "id": "string",
+          "type": "string (USER | FILE | EMAIL | CHANNEL | LOG)",
+          "label": "string"
+        }
+      ],
+      "edges": [
+        {
+          "source": "string (node id)",
+          "target": "string (node id)",
+          "relation": "string (USED_CHANNEL | SENT_TO | ATTACHED | ACCESSED | DELETED)"
+        }
+      ]
+    }
+  }
+}

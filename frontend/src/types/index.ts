@@ -141,7 +141,90 @@ export interface Session {
   status: string
   started_at: string | null
   completed_at: string | null
+  verdict?: Verdict | null
+  risk_score?: number | null
+  report_json?: unknown
 }
+
+// ============================================================
+// Final report (agent/prompts/main.yaml — report_task)
+// ============================================================
+
+export type Verdict = 'HIGH' | 'MEDIUM' | 'LOW' | 'CLEAN'
+
+export interface ReportSubject {
+  name: string
+  position: string
+  hire_date: string
+  resignation_date: string
+}
+
+export interface SuspiciousEmail {
+  email_id: string
+  channel_type: string
+  sender: string
+  recipient: string
+  subject: string
+  sent_at: string
+  has_attachment: boolean
+  suspicion_reason: string
+  risk_weight: number
+}
+
+export interface SuspiciousFile {
+  file_id: string
+  filename: string
+  relative_path: string
+  sensitivity_score: number
+  sensitivity_category: string
+  matched_keywords: string[]
+}
+
+export interface EvidenceNode {
+  id: string
+  type: string
+  label: string
+}
+
+export interface EvidenceEdge {
+  source: string
+  target: string
+  relation: string
+}
+
+export interface ExfiltrationReport {
+  report_type: 'EXFILTRATION_SUSPECTED'
+  verdict: 'HIGH' | 'MEDIUM' | 'LOW'
+  risk_score: number
+  risk_breakdown: Record<string, unknown>
+  subject: ReportSubject
+  summary: string
+  suspicious_emails: SuspiciousEmail[]
+  suspicious_files: SuspiciousFile[]
+  behavior_summary: Record<string, unknown>
+  timeline: unknown[]
+  evidence_network: { nodes: EvidenceNode[]; edges: EvidenceEdge[] }
+}
+
+export interface AnalysisSummary {
+  emails_analyzed: number
+  files_analyzed: number
+  anomalies_found: number
+  false_positives_removed: number
+}
+
+export interface CleanReport {
+  report_type: 'CLEAN_CERTIFICATE'
+  verdict: 'CLEAN'
+  risk_score: number
+  risk_breakdown: Record<string, unknown>
+  subject: ReportSubject
+  summary: string
+  analysis_summary: AnalysisSummary
+  issued_at: string
+}
+
+export type ReportJson = ExfiltrationReport | CleanReport
 
 export interface Summary {
   files: number
