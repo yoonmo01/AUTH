@@ -4,7 +4,6 @@ import { classifyReport } from '../report'
 import { channelLabel, nodeTypeLabel, relationLabel } from '../reportLabels'
 import { formatDate, formatSize } from '../format'
 import { VerdictBadge } from './VerdictBadge'
-import type { ConsoleLayout } from '../consoleLayout'
 import type {
   Session,
   ExfiltrationReport,
@@ -160,15 +159,7 @@ function SubjectLine({ subject }: { subject: ReportSubject }) {
   )
 }
 
-function ExfiltrationReportView({
-  report,
-  layout,
-  onToggleLayout,
-}: {
-  report: ExfiltrationReport
-  layout?: ConsoleLayout
-  onToggleLayout?: () => void
-}) {
+function ExfiltrationReportView({ report }: { report: ExfiltrationReport }) {
   const { evidence_network: net } = report
   return (
     <div className="vd">
@@ -188,14 +179,7 @@ function ExfiltrationReportView({
       <RiskBreakdownSection breakdown={report.risk_breakdown} />
 
       <section className="vd__section">
-        <div className="vd__h-row">
-          <h3 className="vd__h">의심 이메일 ({report.suspicious_emails.length})</h3>
-          {onToggleLayout && (
-            <button type="button" className="vd__expand" onClick={onToggleLayout}>
-              {layout === 'expanded' ? '판정만 보기' : '모두 보기'}
-            </button>
-          )}
-        </div>
+        <h3 className="vd__h">의심 이메일 ({report.suspicious_emails.length})</h3>
         {report.suspicious_emails.length === 0 ? (
           <div className="table__msg">의심 이메일 없음</div>
         ) : (
@@ -332,13 +316,7 @@ function CleanReportView({ report }: { report: CleanReport }) {
   )
 }
 
-type VerdictViewerProps = {
-  sessionId: string | null
-  layout?: ConsoleLayout
-  onToggleLayout?: () => void
-}
-
-export function VerdictViewer({ sessionId, layout, onToggleLayout }: VerdictViewerProps) {
+export function VerdictViewer({ sessionId }: { sessionId: string | null }) {
   const { data, isLoading, isError } = useQuery<Session>({
     queryKey: ['session', sessionId],
     queryFn: () => fetchSession(sessionId as string),
@@ -371,11 +349,5 @@ export function VerdictViewer({ sessionId, layout, onToggleLayout }: VerdictView
   if (classified.kind === 'clean') {
     return <CleanReportView report={classified.report} />
   }
-  return (
-    <ExfiltrationReportView
-      report={classified.report}
-      layout={layout}
-      onToggleLayout={onToggleLayout}
-    />
-  )
+  return <ExfiltrationReportView report={classified.report} />
 }

@@ -1869,32 +1869,38 @@ select.iform__input {
   color: var(--ink-dim);
 }
 
-.vd__h-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 7px;
-}
-.vd__h-row .vd__h {
-  margin-bottom: 0;
+/* header layout toggle */
+.ltoggle {
+  display: inline-flex;
+  align-self: center;
+  border: 1px solid var(--line-hot);
+  background: var(--panel-3);
 }
 
-.vd__expand {
-  flex: none;
-  padding: 4px 12px;
-  background: var(--accent);
-  border: 1px solid var(--accent);
+.ltoggle__opt {
+  padding: 7px 14px;
+  background: none;
+  border: 0;
   font-family: var(--f-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
   cursor: pointer;
-  transition: background 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
-.vd__expand:hover {
-  background: var(--accent-2);
+.ltoggle__opt:hover {
+  color: var(--ink-dim);
+}
+
+.ltoggle__opt--on {
+  background: var(--accent);
+  color: #ffffff;
+}
+.ltoggle__opt--on:hover {
+  color: #ffffff;
 }
 
 .vd__section .table {
