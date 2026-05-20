@@ -526,6 +526,15 @@ body::after {
   color: var(--bad);
 }
 
+.iform__submit-err {
+  padding: 8px 11px;
+  background: rgba(224, 39, 74, 0.08);
+  border-left: 2px solid var(--bad);
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  color: var(--bad);
+}
+
 .iform__btns {
   display: flex;
   justify-content: flex-end;
