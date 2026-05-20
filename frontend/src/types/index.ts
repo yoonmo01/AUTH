@@ -141,7 +141,131 @@ export interface Session {
   status: string
   started_at: string | null
   completed_at: string | null
+  verdict?: Verdict | null
+  risk_score?: number | null
+  report_json?: unknown
 }
+
+// ============================================================
+// Final report — authoritative schema: final_report_schema.md
+// ============================================================
+
+export type Verdict = 'HIGH' | 'MEDIUM' | 'LOW' | 'CLEAN'
+
+export type ChannelType = 'protonmail' | 'tmpbox' | 'anonymous_channel'
+export type EvidenceNodeType = 'USER' | 'FILE' | 'EMAIL' | 'CHANNEL' | 'LOG'
+export type EvidenceRelation =
+  | 'USED_CHANNEL' | 'SENT_TO' | 'ATTACHED' | 'ACCESSED' | 'DELETED'
+
+export interface ReportSubject {
+  name: string
+  position: string
+  hire_date: string
+  resignation_date: string
+}
+
+// Risk score components. All optional — a report may omit any of them.
+export interface RiskBreakdown {
+  cross_ref?: number
+  deleted_files?: number
+  anon_channel?: number
+  anomaly?: number
+  counter_evidence?: number
+}
+
+export interface SuspiciousEmail {
+  email_id: string
+  channel_type: ChannelType
+  sender: string
+  recipient: string
+  subject: string
+  sent_at: string
+  has_attachment: boolean
+  suspicion_reason: string
+  risk_weight: number
+}
+
+export interface SuspiciousFile {
+  file_id: string
+  filename: string
+  relative_path: string
+  sensitivity_score: number
+  sensitivity_category: string
+  matched_keywords: string[]
+}
+
+export interface DeletedFileEntry {
+  original_filename: string
+  deleted_at: string
+  file_size_bytes: number
+  reason: string
+}
+
+export interface OutOfHoursActivity {
+  event_type: string
+  event_at: string
+  detail: string
+}
+
+export interface BehaviorSummary {
+  highlight_dates: string[]
+  deleted_files: DeletedFileEntry[]
+  out_of_hours_activity: OutOfHoursActivity[]
+  notes: string
+}
+
+// Report timeline — date-grouped event strings. Distinct from the
+// /timeline endpoint's ActivityEvent (see above).
+export interface ReportTimelineEntry {
+  date: string
+  events: string[]
+}
+
+export interface EvidenceNode {
+  id: string
+  type: EvidenceNodeType
+  label: string
+}
+
+export interface EvidenceEdge {
+  source: string
+  target: string
+  relation: EvidenceRelation
+}
+
+export interface ExfiltrationReport {
+  report_type: 'EXFILTRATION_SUSPECTED'
+  verdict: 'HIGH' | 'MEDIUM' | 'LOW'
+  risk_score: number
+  risk_breakdown: RiskBreakdown
+  subject: ReportSubject
+  summary: string
+  suspicious_emails: SuspiciousEmail[]
+  suspicious_files: SuspiciousFile[]
+  behavior_summary: BehaviorSummary
+  timeline: ReportTimelineEntry[]
+  evidence_network: { nodes: EvidenceNode[]; edges: EvidenceEdge[] }
+}
+
+export interface AnalysisSummary {
+  emails_analyzed: number
+  files_analyzed: number
+  anomalies_found: number
+  false_positives_removed: number
+}
+
+export interface CleanReport {
+  report_type: 'CLEAN_CERTIFICATE'
+  verdict: 'CLEAN'
+  risk_score: number
+  risk_breakdown: RiskBreakdown
+  subject: ReportSubject
+  summary: string
+  analysis_summary: AnalysisSummary
+  issued_at: string
+}
+
+export type ReportJson = ExfiltrationReport | CleanReport
 
 export interface Summary {
   files: number

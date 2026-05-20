@@ -20,6 +20,8 @@ import caseDetail from './case.json'
 import sessions from './sessions.json'
 import session from './session.json'
 import findings from './findings.json'
+import submit from './submit.json'
+import directoryStructure from './directory-structure.json'
 
 const EXACT: Record<string, unknown> = {
   '/summary': summary,
@@ -32,6 +34,8 @@ const EXACT: Record<string, unknown> = {
   '/timeline': timeline,
   '/cases': cases,
   '/sessions': sessions,
+  '/investigations': submit,
+  '/files/structure': directoryStructure,
 }
 
 const DYNAMIC: { pattern: RegExp; fixture: unknown }[] = [

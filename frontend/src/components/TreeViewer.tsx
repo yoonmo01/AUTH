@@ -8,6 +8,7 @@ export type TreeSelected =
   | { kind: 'category'; category: FileCategory }
   | { kind: 'emails' }
   | { kind: 'entities' }
+  | { kind: 'sessions' }
 
 export function sameSelection(a: TreeSelected, b: TreeSelected): boolean {
   if (a.kind !== b.kind) return false
@@ -116,6 +117,15 @@ export function TreeViewer({ selected, onSelect }: Props) {
                 count={data?.entities}
                 on={selected.kind === 'entities'}
                 onClick={() => onSelect({ kind: 'entities' })}
+              />
+            </li>
+            <li>
+              <TreeNode
+                root
+                mark="⊕"
+                label="수사 결과"
+                on={selected.kind === 'sessions'}
+                onClick={() => onSelect({ kind: 'sessions' })}
               />
             </li>
           </ul>
