@@ -6,45 +6,50 @@ import {
   Background,
   Controls,
   MarkerType,
-  Position,
   useReactFlow,
   type Node,
   type Edge,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { fetchGraphNodes, fetchEmailEdges, fetchActivityEdges } from '../api/client'
+import { layoutGraphNodes, type LayoutDirection } from '../graphLayout'
+import type { ConsoleLayout } from '../consoleLayout'
 import type { GraphNode, GraphEdge, NodeType } from '../types'
 
-// Node types laid out left→right in evidence-flow order.
-const TYPE_META: Record<NodeType, { label: string; col: number; style: CSSProperties }> = {
-  user:               { label: '사용자',     col: 0, style: { background: '#1559ee', color: '#fff', borderColor: '#1559ee', borderRadius: 18 } },
-  email_identity:     { label: '메일 계정',  col: 1, style: { background: '#e8f0ff', color: '#16222b', borderColor: '#3b82f6' } },
-  email:              { label: '이메일',     col: 2, style: { background: '#e3f6fb', color: '#16222b', borderColor: '#0ea5d4' } },
-  file:               { label: '파일',       col: 3, style: { background: '#ffffff', color: '#16222b', borderColor: '#bcc6cf' } },
-  external_recipient: { label: '외부 수신자', col: 4, style: { background: '#fde6ea', color: '#e0274a', borderColor: '#e0274a', borderRadius: 18 } },
-  entity:             { label: '엔티티',     col: 5, style: { background: '#fdf0db', color: '#8a5708', borderColor: '#c2790b' } },
-  event:              { label: '이벤트',     col: 6, style: { background: '#eef1f5', color: '#16222b', borderColor: '#93a1ad', borderRadius: 3 } },
+// Per-type display style. Layout order/position lives in ../graphLayout.
+const TYPE_META: Record<NodeType, { label: string; style: CSSProperties }> = {
+  user:               { label: '사용자',     style: { background: '#1559ee', color: '#fff', borderColor: '#1559ee', borderRadius: 18 } },
+  email_identity:     { label: '메일 계정',  style: { background: '#e8f0ff', color: '#16222b', borderColor: '#3b82f6' } },
+  email:              { label: '이메일',     style: { background: '#e3f6fb', color: '#16222b', borderColor: '#0ea5d4' } },
+  file:               { label: '파일',       style: { background: '#ffffff', color: '#16222b', borderColor: '#bcc6cf' } },
+  external_recipient: { label: '외부 수신자', style: { background: '#fde6ea', color: '#e0274a', borderColor: '#e0274a', borderRadius: 18 } },
+  entity:             { label: '엔티티',     style: { background: '#fdf0db', color: '#8a5708', borderColor: '#c2790b' } },
+  event:              { label: '이벤트',     style: { background: '#eef1f5', color: '#16222b', borderColor: '#93a1ad', borderRadius: 3 } },
 }
 const ALL_TYPES = Object.keys(TYPE_META) as NodeType[]
 
-const COL_W = 250
-const ROW_H = 92
-
-function buildNodes(graphNodes: GraphNode[], visible: Set<NodeType>): Node[] {
-  const stacked = new Map<NodeType, number>()
+function buildNodes(
+  graphNodes: GraphNode[],
+  visible: Set<NodeType>,
+  direction: LayoutDirection,
+): Node[] {
+  const filtered = graphNodes.filter(
+    (n) => TYPE_META[n.node_type] && visible.has(n.node_type),
+  )
+  const positioned = new Map(
+    layoutGraphNodes(filtered, direction).map((p) => [p.id, p]),
+  )
   const out: Node[] = []
-  for (const n of graphNodes) {
-    const meta = TYPE_META[n.node_type]
-    if (!meta || !visible.has(n.node_type)) continue
-    const row = stacked.get(n.node_type) ?? 0
-    stacked.set(n.node_type, row + 1)
+  for (const n of filtered) {
+    const pos = positioned.get(n.node_id)
+    if (!pos) continue
     out.push({
       id: n.node_id,
-      position: { x: meta.col * COL_W, y: row * ROW_H },
+      position: { x: pos.x, y: pos.y },
       data: { label: n.label },
-      sourcePosition: Position.Right,
-      targetPosition: Position.Left,
-      style: { width: 188, fontSize: 11, border: '1px solid', ...meta.style },
+      sourcePosition: pos.sourcePosition,
+      targetPosition: pos.targetPosition,
+      style: { width: 188, fontSize: 11, border: '1px solid', ...TYPE_META[n.node_type].style },
     })
   }
   return out
@@ -80,7 +85,7 @@ function buildEdges(
   ].filter((e): e is Edge => e !== null)
 }
 
-function NetworkInner() {
+function NetworkInner({ direction }: { direction: LayoutDirection }) {
   const [visible, setVisible] = useState<Set<NodeType>>(() => new Set(ALL_TYPES))
   const { fitView } = useReactFlow()
 
@@ -89,11 +94,11 @@ function NetworkInner() {
   const actQ = useQuery({ queryKey: ['graph-edges-activity'], queryFn: () => fetchActivityEdges() })
 
   const { rfNodes, rfEdges } = useMemo(() => {
-    const nodes = buildNodes(nodesQ.data ?? [], visible)
+    const nodes = buildNodes(nodesQ.data ?? [], visible, direction)
     const ids = new Set(nodes.map((n) => n.id))
     const edges = buildEdges(emailQ.data ?? [], actQ.data ?? [], ids)
     return { rfNodes: nodes, rfEdges: edges }
-  }, [nodesQ.data, emailQ.data, actQ.data, visible])
+  }, [nodesQ.data, emailQ.data, actQ.data, visible, direction])
 
   function toggle(type: NodeType) {
     setVisible((prev) => {
@@ -138,6 +143,7 @@ function NetworkInner() {
       </div>
       <div className="net__canvas">
         <ReactFlow
+          key={direction}
           nodes={rfNodes}
           edges={rfEdges}
           fitView
@@ -154,10 +160,12 @@ function NetworkInner() {
   )
 }
 
-export function NetworkViewer() {
+// expanded → top-down (narrow tall panel); focused → left-right (wide panel).
+export function NetworkViewer({ layout }: { layout: ConsoleLayout }) {
+  const direction: LayoutDirection = layout === 'expanded' ? 'vertical' : 'horizontal'
   return (
     <ReactFlowProvider>
-      <NetworkInner />
+      <NetworkInner direction={direction} />
     </ReactFlowProvider>
   )
 }

@@ -138,6 +138,7 @@ export function Console({ initialSessionId }: Props) {
       selectedSessionId={selectedSessionId}
       tab={contentTab}
       onTab={setContentTab}
+      layout={layout}
     />
   )
 
