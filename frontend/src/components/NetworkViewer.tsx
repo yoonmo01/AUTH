@@ -1,4 +1,11 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type MutableRefObject,
+} from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   ReactFlow,
@@ -7,14 +14,22 @@ import {
   Controls,
   MarkerType,
   useReactFlow,
+  getNodesBounds,
+  getViewportForBounds,
   type Node,
   type Edge,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
+import { toPng } from 'html-to-image'
 import { fetchGraphNodes, fetchEmailEdges, fetchActivityEdges } from '../api/client'
+import { buildDownloadFilename } from '../downloadFilename'
 import { layoutGraphNodes, type LayoutDirection } from '../graphLayout'
 import type { ConsoleLayout } from '../consoleLayout'
 import type { GraphNode, GraphEdge, NodeType } from '../types'
+
+// The tab bar (ContentViewer) owns the "그래프 다운로드" button but the graph
+// export needs ReactFlow context, so NetworkInner publishes its export fn here.
+export type GraphExportRef = MutableRefObject<(() => void) | null>
 
 // Per-type display style. Layout order/position lives in ../graphLayout.
 const TYPE_META: Record<NodeType, { label: string; style: CSSProperties }> = {
@@ -85,9 +100,20 @@ function buildEdges(
   ].filter((e): e is Edge => e !== null)
 }
 
-function NetworkInner({ direction }: { direction: LayoutDirection }) {
+// Export resolution for the PNG snapshot — large enough to stay legible when
+// the whole graph is fit into frame.
+const EXPORT_W = 1920
+const EXPORT_H = 1200
+
+function NetworkInner({
+  direction,
+  exportRef,
+}: {
+  direction: LayoutDirection
+  exportRef: GraphExportRef
+}) {
   const [visible, setVisible] = useState<Set<NodeType>>(() => new Set(ALL_TYPES))
-  const { fitView } = useReactFlow()
+  const { fitView, getNodes } = useReactFlow()
 
   const nodesQ = useQuery({ queryKey: ['graph-nodes'], queryFn: () => fetchGraphNodes() })
   const emailQ = useQuery({ queryKey: ['graph-edges-email'], queryFn: () => fetchEmailEdges() })
@@ -99,6 +125,47 @@ function NetworkInner({ direction }: { direction: LayoutDirection }) {
     const edges = buildEdges(emailQ.data ?? [], actQ.data ?? [], ids)
     return { rfNodes: nodes, rfEdges: edges }
   }, [nodesQ.data, emailQ.data, actQ.data, visible, direction])
+
+  // Snapshot the graph to PNG. The viewport transform is overridden so the
+  // whole node set is fit into the export frame regardless of current pan/zoom.
+  const exportPng = useCallback(() => {
+    const viewportEl = document.querySelector<HTMLElement>(
+      '.net__canvas .react-flow__viewport',
+    )
+    const nodes = getNodes()
+    if (!viewportEl || nodes.length === 0) return
+    const bounds = getNodesBounds(nodes)
+    const { x, y, zoom } = getViewportForBounds(bounds, EXPORT_W, EXPORT_H, 0.2, 2, 0.12)
+    toPng(viewportEl, {
+      backgroundColor: '#ffffff',
+      width: EXPORT_W,
+      height: EXPORT_H,
+      style: {
+        width: `${EXPORT_W}px`,
+        height: `${EXPORT_H}px`,
+        transform: `translate(${x}px, ${y}px) scale(${zoom})`,
+      },
+    })
+      .then((dataUrl) => {
+        const link = document.createElement('a')
+        link.download = buildDownloadFilename({
+          kind: 'network-graph',
+          extension: 'png',
+          date: new Date(),
+        })
+        link.href = dataUrl
+        link.click()
+      })
+      .catch((err) => console.error('네트워크 그래프 내보내기 실패', err))
+  }, [getNodes])
+
+  // Publish the export fn to the tab bar while mounted; clear it on unmount.
+  useEffect(() => {
+    exportRef.current = exportPng
+    return () => {
+      exportRef.current = null
+    }
+  }, [exportRef, exportPng])
 
   function toggle(type: NodeType) {
     setVisible((prev) => {
@@ -161,11 +228,17 @@ function NetworkInner({ direction }: { direction: LayoutDirection }) {
 }
 
 // expanded → top-down (narrow tall panel); focused → left-right (wide panel).
-export function NetworkViewer({ layout }: { layout: ConsoleLayout }) {
+export function NetworkViewer({
+  layout,
+  exportRef,
+}: {
+  layout: ConsoleLayout
+  exportRef: GraphExportRef
+}) {
   const direction: LayoutDirection = layout === 'expanded' ? 'vertical' : 'horizontal'
   return (
     <ReactFlowProvider>
-      <NetworkInner direction={direction} />
+      <NetworkInner direction={direction} exportRef={exportRef} />
     </ReactFlowProvider>
   )
 }

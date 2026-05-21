@@ -26,7 +26,8 @@ const RISK_LABELS: { key: keyof RiskBreakdown; label: string }[] = [
 // Print the verdict report to PDF. The print-only stylesheet (App.css)
 // hides the console chrome; document.title is swapped so the print dialog's
 // default "save as PDF" filename matches the report.
-function printVerdictReport(subjectName: string, verdict: string) {
+// Exported so the action button can live in ContentViewer's tab bar.
+export function printVerdictReport(subjectName: string, verdict: string) {
   const filename = buildDownloadFilename({
     kind: 'verdict-report',
     extension: 'pdf',
@@ -42,20 +43,6 @@ function printVerdictReport(subjectName: string, verdict: string) {
   }
   window.addEventListener('afterprint', restore)
   window.print()
-}
-
-function VerdictActions({ subjectName, verdict }: { subjectName: string; verdict: string }) {
-  return (
-    <div className="vd__actions">
-      <button
-        type="button"
-        className="vd__pdf"
-        onClick={() => printVerdictReport(subjectName, verdict)}
-      >
-        PDF 다운로드
-      </button>
-    </div>
-  )
 }
 
 function RiskBreakdownSection({ breakdown }: { breakdown: RiskBreakdown }) {
@@ -199,7 +186,6 @@ function ExfiltrationReportView({ report }: { report: ExfiltrationReport }) {
   const { evidence_network: net } = report
   return (
     <div className="vd">
-      <VerdictActions subjectName={report.subject.name} verdict={report.verdict} />
       <header className="vd__hero vd__hero--alert">
         <div className="vd__verdict">
           <VerdictBadge verdict={report.verdict} />
@@ -325,7 +311,6 @@ function CleanReportView({ report }: { report: CleanReport }) {
   ]
   return (
     <div className="vd">
-      <VerdictActions subjectName={report.subject.name} verdict="CLEAN" />
       <header className="vd__hero vd__hero--clean">
         <div className="vd__verdict">
           <VerdictBadge verdict="CLEAN" />

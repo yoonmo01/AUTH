@@ -1261,6 +1261,37 @@ select.iform__input {
   box-shadow: inset 0 -2px 0 var(--accent);
 }
 
+/* Right-aligned action cluster in the tab bar (PDF 다운로드, #40 그래프 다운로드).
+   First child sits leftmost, so appended buttons land further right. */
+.zone__tab-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+}
+
+.zone__action {
+  padding: 4px 12px;
+  appearance: none;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.zone__action:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
 .zone__body {
   flex: 1;
   min-height: 0;
@@ -1848,32 +1879,6 @@ select.iform__input {
   padding: 16px 18px;
 }
 
-.vd__actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 12px;
-}
-
-.vd__pdf {
-  padding: 5px 14px;
-  background: #ffffff;
-  border: 1px solid var(--line);
-  font-family: var(--f-mono);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  color: var(--accent);
-  cursor: pointer;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
-}
-
-.vd__pdf:hover {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-}
-
 .vd__hero {
   display: flex;
   align-items: center;
@@ -2328,8 +2333,7 @@ select.iform__input {
   .statusbar,
   .workspace__left,
   .rsz,
-  .zone__tabs,
-  .vd__actions {
+  .zone__tabs {
     display: none !important;
   }
 
