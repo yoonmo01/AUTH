@@ -2,16 +2,37 @@
   "name": "hyena-desktop",
   "version": "0.1.0",
   "description": "HYENA 수사관용 데스크톱 앱 (Electron)",
+  "author": "HYENA",
   "main": "electron/build/main.js",
   "scripts": {
     "electron:build": "tsc -p electron",
     "electron:start": "wait-on http://localhost:3000 && electron .",
-    "dev": "npm run electron:build && concurrently -k \"npm --prefix frontend run dev\" \"npm run electron:start\""
+    "dev": "npm run electron:build && concurrently -k \"npm --prefix frontend run dev\" \"npm run electron:start\"",
+    "build": "npm run electron:build && npm --prefix frontend run build",
+    "dist": "npm run build && electron-builder"
+  },
+  "build": {
+    "appId": "com.hyena.desktop",
+    "productName": "HYENA",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/build/**/*",
+      "frontend/dist/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    }
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "concurrently": "^9.0.0",
     "electron": "^31.0.0",
+    "electron-builder": "^24.0.0",
     "typescript": "^5.5.0",
     "wait-on": "^8.0.0"
   }
