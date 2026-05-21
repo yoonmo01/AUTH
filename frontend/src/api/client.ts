@@ -4,8 +4,9 @@ import type {
   Finding, Case, Session,
 } from '../types'
 import { resolveFixture } from '../fixtures'
+import { resolveApiBase } from './apiBase'
 
-const BASE = '/api'
+const BASE = resolveApiBase(import.meta.env.DEV)
 
 function orFixture<T>(path: string, reason: string): T {
   const fx = resolveFixture(path)
