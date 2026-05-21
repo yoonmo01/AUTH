@@ -1,9 +1,9 @@
-import { app, BrowserWindow, Menu } from 'electron'
+import { app, BrowserWindow, Menu, type MenuItemConstructorOptions } from 'electron'
 import path from 'node:path'
 
-// Electron dev shell (Electron S2). Wraps the Vite + React renderer in a
-// desktop window. Dev mode loads the Vite dev server; the packaged-build
-// branch (loadFile) is added in a later slice.
+// Electron main process. Wraps the Vite + React renderer in a desktop window.
+// Dev mode loads the Vite dev server; a packaged build loads the built
+// renderer from disk over file://.
 const DEV_SERVER_URL = 'http://localhost:3000'
 
 function createWindow(): void {
@@ -17,15 +17,21 @@ function createWindow(): void {
       nodeIntegration: false,
     },
   })
-  win.loadURL(DEV_SERVER_URL)
+  if (app.isPackaged) {
+    win.loadFile(path.join(__dirname, '../../frontend/dist/index.html'))
+  } else {
+    win.loadURL(DEV_SERVER_URL)
+  }
 }
 
 function buildMenu(): void {
-  const menu = Menu.buildFromTemplate([
+  const template: MenuItemConstructorOptions[] = [
     { label: 'File', submenu: [{ role: 'quit' }] },
-    { label: 'View', submenu: [{ role: 'toggleDevTools' }] },
-  ])
-  Menu.setApplicationMenu(menu)
+  ]
+  if (!app.isPackaged) {
+    template.push({ label: 'View', submenu: [{ role: 'toggleDevTools' }] })
+  }
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
 app.whenReady().then(() => {
