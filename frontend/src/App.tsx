@@ -9,7 +9,14 @@ import { Console } from './components/Console'
 
 // App shell — gates the investigation console behind the onboarding flow.
 // The flow state machine (./flow) drives which screen renders.
+// Dev shortcut: ?session=<id> jumps directly to the console with that session.
 function App() {
+  const params = new URLSearchParams(window.location.search)
+  const devSession = params.get('session')
+  if (devSession) {
+    return <Console initialSessionId={devSession} />
+  }
+
   const [flow, dispatch] = useReducer(flowReducer, initialFlowState)
 
   switch (flow.phase) {

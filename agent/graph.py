@@ -352,16 +352,31 @@ def _parse_json(text: str) -> dict:
 # 그래프 조립
 # ---------------------------------------------------------------------------
 
+def _progress_wrap(step: str, fn):
+    """노드 함수를 감싸 SSE 진행 이벤트를 emit한다. session_id가 없으면 무시."""
+    def wrapper(state: InvestigationState):
+        sid = state.get("session_id", "")
+        if sid:
+            from api.progress import emit
+            emit(sid, {"event": "step_start", "step": step})
+        result = fn(state)
+        if sid:
+            from api.progress import emit
+            emit(sid, {"event": "step_done", "step": step})
+        return result
+    return wrapper
+
+
 def build_graph():
     """Main Supervisor LangGraph 그래프를 생성하고 컴파일해서 반환한다."""
     g = StateGraph(InvestigationState)
 
-    g.add_node("step1",     step1_node)
-    g.add_node("parallel",  parallel_node)
-    g.add_node("cross_ref", cross_ref_node)
-    g.add_node("step5",     step5_node)
-    g.add_node("scoring",   scoring_node)
-    g.add_node("report",    report_node)
+    g.add_node("step1",     _progress_wrap("step1",     step1_node))
+    g.add_node("parallel",  _progress_wrap("parallel",  parallel_node))
+    g.add_node("cross_ref", _progress_wrap("cross_ref", cross_ref_node))
+    g.add_node("step5",     _progress_wrap("step5",     step5_node))
+    g.add_node("scoring",   _progress_wrap("scoring",   scoring_node))
+    g.add_node("report",    _progress_wrap("report",    report_node))
 
     g.set_entry_point("step1")
     g.add_edge("step1",     "parallel")

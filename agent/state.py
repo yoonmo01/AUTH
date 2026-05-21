@@ -10,6 +10,7 @@ class InvestigationState(TypedDict):
     resignation_date: str
     analysis_start: str   # DB 실제 데이터 시작일 (외부 주입) 또는 resignation_date - 90일
     source_label: str
+    session_id: str       # 진행 이벤트 큐 키 (api/progress.py)
 
     # 각 Sub-Agent 출력 (순서대로 채워짐)
     baseline_profile: dict
@@ -32,6 +33,7 @@ def make_initial_state(
     resignation_date: str,
     source_label: str,
     analysis_start: Optional[str] = None,
+    session_id: str = "",
 ) -> InvestigationState:
     if analysis_start is None:
         resign_dt = datetime.strptime(resignation_date, "%Y-%m-%d")
@@ -43,6 +45,7 @@ def make_initial_state(
         resignation_date=resignation_date,
         analysis_start=analysis_start,
         source_label=source_label,
+        session_id=session_id,
         baseline_profile={},
         suspicious_channels=[],
         sensitive_files=[],

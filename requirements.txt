@@ -39,5 +39,6 @@ pandas>=2.0
 numpy>=1.26
 
 psycopg2-binary>=2.9
+sse-starlette>=1.6
 neo4j>=5.0
 chardet>=5.0

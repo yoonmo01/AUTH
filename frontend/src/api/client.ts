@@ -108,12 +108,10 @@ export const fetchSession = (id: string): Promise<Session> =>
   get(`/sessions/${id}`)
 
 // ── Agent run ────────────────────────────────────────────────
-// Calls POST /agent/run synchronously (no fixture fallback — backend must be running).
+// POST /agent/run returns {session_id} immediately (202) — backend starts agent in background.
+// Use EventSource('/api/agent/events/{session_id}') to receive progress + completion events.
 export interface AgentRunResult {
   session_id: string
-  verdict: string
-  risk_score: number
-  final_report: unknown
 }
 
 export const runAgentAnalysis = (input: {
