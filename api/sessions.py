@@ -53,7 +53,14 @@ def get_session(session_id: str):
     )
     if not rows:
         raise HTTPException(404, "Session not found")
-    return rows[0]
+    row = rows[0]
+    # db.py는 CSV 방식으로 JSONB를 문자열로 반환한다 — 객체로 파싱해서 전달.
+    if isinstance(row.get("report_json"), str):
+        try:
+            row["report_json"] = json.loads(row["report_json"])
+        except (json.JSONDecodeError, TypeError):
+            row["report_json"] = None
+    return row
 
 
 @router.patch("/sessions/{session_id}/complete")

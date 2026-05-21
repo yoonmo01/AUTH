@@ -687,6 +687,16 @@ select.iform__input {
   transition: width 0.2s linear;
 }
 
+.load__error {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--bad) 15%, transparent);
+  border: 1px solid var(--bad);
+  color: var(--bad);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+}
+
 .load__waiting {
   position: fixed;
   bottom: 32px;
