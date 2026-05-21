@@ -31,7 +31,7 @@ export function ContentViewer({ selectedSessionId, tab, onTab, layout }: Props) 
       </div>
       <div className="zone__body zone__body--content">
         {tab === 0 ? (
-          <VerdictViewer sessionId={selectedSessionId} />
+          <VerdictViewer sessionId={selectedSessionId} layout={layout} />
         ) : tab === 1 ? (
           <NetworkViewer layout={layout} sessionId={selectedSessionId} />
         ) : (

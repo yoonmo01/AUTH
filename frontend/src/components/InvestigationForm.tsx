@@ -101,6 +101,7 @@ const EMPTY: InvestigationInput = {
   position: '',
   hireDate: '',
   resignationDate: '',
+  dummy: false,
 }
 
 function Field({
@@ -128,7 +129,10 @@ export function InvestigationForm({ onSubmit, onBack }: Props) {
   const [touched, setTouched] = useState<Set<FormField>>(new Set())
   const [submitAttempted, setSubmitAttempted] = useState(false)
 
-  const { ok, errors } = validateInvestigationForm(input)
+  const validation = validateInvestigationForm(input)
+  // 더미 모드는 검증 우회 — 백엔드 호출이 없어서 입력값이 의미 없음
+  const ok = input.dummy ? true : validation.ok
+  const errors = input.dummy ? {} : validation.errors
 
   function set(field: FormField, value: string) {
     setInput((prev) => ({ ...prev, [field]: value }))
@@ -214,11 +218,19 @@ export function InvestigationForm({ onSubmit, onBack }: Props) {
         </div>
 
         <div className="iform__btns">
+          <label className="iform__dummy" title="백엔드 에이전트를 호출하지 않고 번들된 더미 세션으로 콘솔 진입">
+            <input
+              type="checkbox"
+              checked={!!input.dummy}
+              onChange={(e) => setInput((prev) => ({ ...prev, dummy: e.target.checked }))}
+            />
+            <span>DUMMY 모드</span>
+          </label>
           <button type="button" className="onb__btn" onClick={onBack}>
             뒤로
           </button>
           <button type="submit" className="onb__btn onb__btn--primary" disabled={!ok}>
-            분석 시작
+            {input.dummy ? '더미로 진입' : '분석 시작'}
           </button>
         </div>
       </form>

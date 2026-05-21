@@ -7,6 +7,7 @@ import type { EmailRecord } from '../types'
 type Props = {
   email: EmailRecord   // row from the list (has id, subject, sender, sent_at)
   onClose: () => void
+  suspicionReason?: string
 }
 
 function MetaRow({ label, value }: { label: string; value: string | null | undefined }) {
@@ -19,7 +20,7 @@ function MetaRow({ label, value }: { label: string; value: string | null | undef
   )
 }
 
-export function EmailBodyModal({ email, onClose }: Props) {
+export function EmailBodyModal({ email, onClose, suspicionReason }: Props) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
@@ -58,6 +59,13 @@ export function EmailBodyModal({ email, onClose }: Props) {
             ✕
           </button>
         </header>
+
+        {suspicionReason && (
+          <div className="em__suspicion">
+            <span className="em__suspicion__label">의심 사유</span>
+            <span className="em__suspicion__text">{suspicionReason}</span>
+          </div>
+        )}
 
         <div className="em__meta">
           <MetaRow label="발신" value={full.sender} />

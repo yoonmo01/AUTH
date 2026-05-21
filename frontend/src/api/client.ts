@@ -5,8 +5,13 @@ import type {
 } from '../types'
 import { resolveFixture } from '../fixtures'
 import { resolveApiBase } from './apiBase'
+import dummySession from '../dummy/session.json'
 
 const BASE = resolveApiBase(import.meta.env.DEV)
+
+// 더미 모드용 가짜 session_id. fetchSession이 이 값을 보면 백엔드를 거치지
+// 않고 번들된 JSON을 반환한다.
+export const DUMMY_SESSION_ID = 'dummy-local'
 
 function orFixture<T>(path: string, reason: string): T {
   const fx = resolveFixture(path)
@@ -105,8 +110,12 @@ export const fetchFindings = (sessionId: string): Promise<Finding[]> =>
 export const fetchSessions = (): Promise<Session[]> =>
   get('/sessions')
 
-export const fetchSession = (id: string): Promise<Session> =>
-  get(`/sessions/${id}`)
+export const fetchSession = (id: string): Promise<Session> => {
+  if (id === DUMMY_SESSION_ID) {
+    return Promise.resolve(dummySession as unknown as Session)
+  }
+  return get(`/sessions/${id}`)
+}
 
 // ── Agent run ────────────────────────────────────────────────
 // POST /agent/run returns {session_id} immediately (202) — backend starts agent in background.

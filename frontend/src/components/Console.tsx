@@ -43,9 +43,7 @@ function Readout({ label, value, loading, accent }: ReadoutProps) {
 const LEFT_MIN = 200
 const LEFT_MAX = 520
 const LEFT_DEFAULT = 280
-const RIGHT_MIN = 320
-const RIGHT_MAX = 720
-const RIGHT_DEFAULT = 420
+const RIGHT_FIXED = 480
 
 // Draggable vertical divider — used for both the left and right columns.
 function ResizeHandle({ onDrag }: { onDrag: (clientX: number) => void }) {
@@ -99,21 +97,14 @@ export function Console({ initialSessionId }: Props) {
   const debouncedSearch = useDebouncedValue(search, 300)
   const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null)
 
-  // Resizable left/right column widths.
+  // Left column is resizable; right (verdict) column is fixed at RIGHT_FIXED.
   const [leftWidth, setLeftWidth] = useState(LEFT_DEFAULT)
-  const [rightWidth, setRightWidth] = useState(RIGHT_DEFAULT)
   const workspaceRef = useRef<HTMLElement>(null)
   function handleResize(clientX: number) {
     const rect = workspaceRef.current?.getBoundingClientRect()
     if (!rect) return
     const next = clientX - rect.left
     setLeftWidth(Math.min(LEFT_MAX, Math.max(LEFT_MIN, next)))
-  }
-  function handleResizeRight(clientX: number) {
-    const rect = workspaceRef.current?.getBoundingClientRect()
-    if (!rect) return
-    const next = rect.right - clientX
-    setRightWidth(Math.min(RIGHT_MAX, Math.max(RIGHT_MIN, next)))
   }
 
   const { data: sessions } = useQuery<Session[]>({
@@ -211,7 +202,7 @@ export function Console({ initialSessionId }: Props) {
           className="workspace"
           ref={workspaceRef}
           style={{
-            gridTemplateColumns: `${leftWidth}px 8px minmax(0, 1fr) 8px ${rightWidth}px`,
+            gridTemplateColumns: `${leftWidth}px 8px minmax(0, 1fr) ${RIGHT_FIXED}px`,
           }}
         >
           <div className="workspace__left">
@@ -228,7 +219,6 @@ export function Console({ initialSessionId }: Props) {
             onSelectFile={setSelectedFile}
             selectedSessionId={selectedSessionId}
           />
-          <ResizeHandle onDrag={handleResizeRight} />
           {tabPanel}
         </main>
       )}
