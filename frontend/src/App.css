@@ -533,8 +533,31 @@ select.iform__input {
 .iform__btns {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 10px;
   margin-top: 8px;
+}
+
+.iform__dummy {
+  margin-right: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--ink-dim);
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 8px;
+  border: 1px dashed var(--line);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.iform__dummy input {
+  accent-color: var(--accent);
+  cursor: pointer;
 }
 
 /* ============================================================
@@ -1141,6 +1164,47 @@ select.iform__input {
 }
 
 /* ── Email body modal ─────────────────────────── */
+.em__suspicion {
+  flex: none;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 14px;
+  background: rgba(224, 39, 74, 0.05);
+  border-bottom: 1px solid rgba(224, 39, 74, 0.18);
+}
+
+.em__suspicion__label {
+  flex: none;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--bad);
+  padding-top: 1px;
+}
+
+.em__suspicion__text {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-dim);
+}
+
+.susp-section__head {
+  padding: 6px 12px;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.susp-section__head--gap {
+  border-top: 2px solid var(--line-hot);
+}
+
 .em__meta {
   flex: none;
   display: flex;
@@ -1207,6 +1271,35 @@ select.iform__input {
   padding: 0 8px 0 14px;
   background: linear-gradient(180deg, var(--panel-2), #ffffff);
   border-bottom: 1px solid var(--line);
+}
+
+.kw-badges {
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 7px 14px;
+  background: rgba(224, 39, 74, 0.05);
+  border-bottom: 1px solid rgba(224, 39, 74, 0.18);
+}
+
+.kw-badges__label {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--bad);
+  flex: none;
+}
+
+.kw-badges__tag {
+  padding: 1px 8px;
+  background: rgba(224, 39, 74, 0.13);
+  border: 1px solid rgba(224, 39, 74, 0.3);
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--bad);
 }
 
 .modal__title {
@@ -1554,6 +1647,101 @@ select.iform__input {
   font-size: 12px;
 }
 
+.table--fixed {
+  table-layout: fixed;
+}
+
+.table--fixed th,
+.table--fixed td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+/* ============================================================
+   TABLE --wrap — fixed layout that always wraps (focused view)
+   Selector is doubled-up to beat `.table tbody td` defaults.
+   ============================================================ */
+.table.table--wrap tbody td,
+.table.table--wrap tbody th {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  overflow: visible;
+  text-overflow: clip;
+  max-width: none;
+  vertical-align: top;
+}
+
+/* ============================================================
+   ROW expander — ▼ in trailing cell toggles wrap for whole row.
+   Generic rule covers both .table--fixed tables (suspicious lists)
+   and the plain .table 전체 파일 list (which uses inline toggle).
+   ============================================================ */
+.table tbody tr.row-exp--open td {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  overflow: visible;
+  text-overflow: clip;
+  max-width: none;
+}
+
+.cell-toggle {
+  text-align: center;
+  padding: 0 !important;
+  vertical-align: top;
+}
+.cell-toggle__btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  cursor: pointer;
+  color: var(--ink-faint);
+  font-size: 8px;
+  padding: 0 3px;
+  line-height: 12px;
+  height: 14px;
+  margin-top: 2px;
+  transition: color 120ms var(--ease), border-color 120ms var(--ease);
+}
+.cell-toggle__btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Inline toggle: absolutely positioned button in last cell — used in
+   the 전체 파일 table where we don't want an extra column. */
+.cell-toggle-inline {
+  position: absolute;
+  right: 4px;
+  top: 6px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  cursor: pointer;
+  color: var(--ink-faint);
+  font-size: 8px;
+  padding: 0 3px;
+  line-height: 12px;
+  height: 14px;
+  z-index: 1;
+  transition: color 120ms var(--ease), border-color 120ms var(--ease);
+}
+.cell-toggle-inline:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.cell-toggle-host {
+  position: relative;
+  padding-right: 26px !important;
+}
+/* When row is open, the cell expands; absolute toggle stays at the top-right. */
+.table tbody tr.row-exp--open .cell-toggle-host {
+  overflow: visible;
+}
+
 .table thead th {
   position: sticky;
   top: 0;
@@ -1773,8 +1961,54 @@ select.iform__input {
   display: inline-block;
 }
 
-.net__fit {
+.net__tools {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.net__dir {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.net__dir-btn {
+  padding: 4px 10px;
+  background: transparent;
+  border: none;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.net__dir-btn + .net__dir-btn {
+  border-left: 1px solid var(--line);
+}
+
+.net__dir-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.net__dir-btn--on {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.net__dir-btn--on:hover {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.net__fit,
+.net__full {
   padding: 4px 12px;
   background: #ffffff;
   border: 1px solid var(--line);
@@ -1789,12 +2023,102 @@ select.iform__input {
     border-color 0.15s;
 }
 
-.net__fit:hover {
+.net__fit:hover,
+.net__full:hover {
   background: var(--accent-soft);
   border-color: var(--accent);
 }
 
 .net__canvas {
+  flex: 1;
+  min-height: 0;
+}
+
+/* 엣지 라벨 — HTML 포털로 렌더되어 모든 엣지 선보다 위에 표시됨.
+   부모 컨테이너(EdgeLabelRenderer)의 z-index가 SVG 위라 선 가림 해결.
+   pointer-events: none → 라벨 클릭이 그래프 패닝 막지 않도록. */
+.net-edge-label {
+  pointer-events: none;
+  background: #ffffff;
+  border: 1px solid #d2dae1;
+  border-radius: 3px;
+  padding: 3px 7px;
+  font-family: var(--f-mono);
+  font-weight: 600;
+  color: #16222b;
+  line-height: 1.1;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(22, 34, 43, 0.06);
+}
+
+/* Narrow expanded layout: keep canvas tall enough that fitView with maxZoom:1
+   doesn't compress the graph into an unreadable strip. */
+.zone--verdict-expanded .net__canvas {
+  min-height: 560px;
+}
+
+/* Fullscreen graph modal */
+.net-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  animation: net-modal-in 0.18s ease-out;
+}
+
+@keyframes net-modal-in {
+  from { opacity: 0; transform: scale(0.985); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.net-modal__head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 22px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.net-modal__title {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--ink);
+}
+
+.net-modal__close {
+  padding: 6px 14px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.net-modal__close:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.net-modal__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.net-modal__body > .net {
   flex: 1;
   min-height: 0;
 }
@@ -2215,6 +2539,54 @@ select.iform__input {
   position: absolute;
   left: 0;
   color: var(--ink-faint);
+}
+
+/* ---- timeline suspicion levels (report timeline) ---- */
+.tl__dot {
+  background: var(--ink-faint);
+}
+.tl__item--low .tl__dot { background: var(--sev-low); }
+.tl__item--medium .tl__dot { background: var(--sev-med); }
+.tl__item--high .tl__dot { background: var(--sev-high); }
+
+.tl__item--low .tl__card    { border-left: 2px solid var(--sev-low); }
+.tl__item--medium .tl__card { border-left: 3px solid var(--sev-med); background: #fff7ec; }
+.tl__item--high .tl__card   { border-left: 3px solid var(--sev-high); background: #fff0f2; }
+
+.tl__item--high .tl__time,
+.tl__item--medium .tl__time {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.tl__sev {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 1px 7px;
+  border: 1px solid;
+}
+.tl__sev--low    { color: var(--sev-low); border-color: var(--sev-low); }
+.tl__sev--medium { color: var(--sev-med); border-color: var(--sev-med); }
+.tl__sev--high   { color: #fff; background: var(--sev-high); border-color: var(--sev-high); }
+
+.tl__event--flagged {
+  color: var(--ink);
+  font-weight: 500;
+}
+.tl__event--flagged::before {
+  content: '◆';
+  color: var(--sev-high);
+  font-size: 9px;
+  top: 4px;
+}
+.tl__kw {
+  background: rgba(224, 39, 74, 0.12);
+  color: var(--sev-high);
+  padding: 0 2px;
+  border-radius: 2px;
+  font-weight: 600;
 }
 
 /* report timeline */

@@ -4,6 +4,8 @@ import { classifyReport } from '../report'
 import { channelLabel, nodeTypeLabel, relationLabel } from '../reportLabels'
 import { formatDate, formatSize } from '../format'
 import { VerdictBadge } from './VerdictBadge'
+import { ExpandableRow } from './ExpandableRow'
+import type { ConsoleLayout } from '../consoleLayout'
 import type {
   Session,
   ExfiltrationReport,
@@ -51,8 +53,10 @@ function RiskBreakdownSection({ breakdown }: { breakdown: RiskBreakdown }) {
   )
 }
 
-function BehaviorSection({ behavior }: { behavior: BehaviorSummary }) {
+function BehaviorSection({ behavior, layout }: { behavior: BehaviorSummary; layout: ConsoleLayout }) {
   const { highlight_dates, deleted_files, out_of_hours_activity, notes, overview, key_behaviors } = behavior
+  const tableMode = layout === 'focused' ? 'table--wrap' : 'table--fixed'
+  const useRow = layout === 'expanded'
 
   // Agent report format: overview + key_behaviors
   if (overview || (key_behaviors && key_behaviors.length > 0)) {
@@ -92,46 +96,76 @@ function BehaviorSection({ behavior }: { behavior: BehaviorSummary }) {
             </div>
           )}
           {deleted_files.length > 0 && (
-            <table className="table">
+            <table className={`table ${tableMode}`}>
+              <colgroup>
+                <col style={{ width: useRow ? '26%' : '28%' }} />
+                <col style={{ width: useRow ? '18%' : '20%' }} />
+                <col style={{ width: useRow ? '11%' : '12%' }} />
+                <col style={{ width: useRow ? '40%' : '40%' }} />
+                {useRow && <col style={{ width: '5%' }} />}
+              </colgroup>
               <thead>
                 <tr>
                   <th>삭제 파일</th>
                   <th>삭제 시각</th>
                   <th>크기</th>
                   <th>사유</th>
+                  {useRow && <th aria-label="펼치기" />}
                 </tr>
               </thead>
               <tbody>
-                {deleted_files.map((f, i) => (
-                  <tr key={i}>
-                    <td className="table__name" title={f.original_filename}>
-                      {f.original_filename}
-                    </td>
-                    <td className="table__num">{formatDate(f.deleted_at)}</td>
-                    <td className="table__num">{formatSize(f.file_size_bytes)}</td>
-                    <td title={f.reason}>{f.reason}</td>
-                  </tr>
-                ))}
+                {deleted_files.map((f, i) =>
+                  useRow ? (
+                    <ExpandableRow key={i}>
+                      <td className="table__name">{f.original_filename}</td>
+                      <td className="table__num">{formatDate(f.deleted_at)}</td>
+                      <td className="table__num">{formatSize(f.file_size_bytes)}</td>
+                      <td>{f.reason}</td>
+                    </ExpandableRow>
+                  ) : (
+                    <tr key={i}>
+                      <td className="table__name">{f.original_filename}</td>
+                      <td className="table__num">{formatDate(f.deleted_at)}</td>
+                      <td className="table__num">{formatSize(f.file_size_bytes)}</td>
+                      <td>{f.reason}</td>
+                    </tr>
+                  ),
+                )}
               </tbody>
             </table>
           )}
           {out_of_hours_activity.length > 0 && (
-            <table className="table">
+            <table className={`table ${tableMode}`}>
+              <colgroup>
+                <col style={{ width: useRow ? '16%' : '18%' }} />
+                <col style={{ width: useRow ? '20%' : '22%' }} />
+                <col style={{ width: useRow ? '59%' : '60%' }} />
+                {useRow && <col style={{ width: '5%' }} />}
+              </colgroup>
               <thead>
                 <tr>
                   <th>업무 외 활동</th>
                   <th>시각</th>
                   <th>상세</th>
+                  {useRow && <th aria-label="펼치기" />}
                 </tr>
               </thead>
               <tbody>
-                {out_of_hours_activity.map((a, i) => (
-                  <tr key={i}>
-                    <td>{a.event_type}</td>
-                    <td className="table__num">{formatDate(a.event_at)}</td>
-                    <td title={a.detail}>{a.detail}</td>
-                  </tr>
-                ))}
+                {out_of_hours_activity.map((a, i) =>
+                  useRow ? (
+                    <ExpandableRow key={i}>
+                      <td>{a.event_type}</td>
+                      <td className="table__num">{formatDate(a.event_at)}</td>
+                      <td>{a.detail}</td>
+                    </ExpandableRow>
+                  ) : (
+                    <tr key={i}>
+                      <td>{a.event_type}</td>
+                      <td className="table__num">{formatDate(a.event_at)}</td>
+                      <td>{a.detail}</td>
+                    </tr>
+                  ),
+                )}
               </tbody>
             </table>
           )}
@@ -178,8 +212,9 @@ function SubjectLine({ subject }: { subject: ReportSubject }) {
   )
 }
 
-function ExfiltrationReportView({ report }: { report: ExfiltrationReport }) {
+function ExfiltrationReportView({ report, layout }: { report: ExfiltrationReport; layout: ConsoleLayout }) {
   const { evidence_network: net } = report
+  const isFocused = layout === 'focused'
   return (
     <div className="vd">
       <header className="vd__hero vd__hero--alert">
@@ -198,35 +233,62 @@ function ExfiltrationReportView({ report }: { report: ExfiltrationReport }) {
       <RiskBreakdownSection breakdown={report.risk_breakdown} />
 
       <section className="vd__section">
-        <h3 className="vd__h">의심 이메일 ({report.suspicious_emails.length})</h3>
-        {report.suspicious_emails.length === 0 ? (
-          <div className="table__msg">의심 이메일 없음</div>
-        ) : (
-          <table className="table">
+        <h3 className="vd__h">민감 파일 ({report.suspicious_files.length})</h3>
+        {report.suspicious_files.length === 0 ? (
+          <div className="table__msg">민감 파일 없음</div>
+        ) : isFocused ? (
+          <table className="table table--wrap">
+            <colgroup>
+              <col style={{ width: '30%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '15%' }} />
+              <col style={{ width: '20%' }} />
+              <col style={{ width: '25%' }} />
+            </colgroup>
             <thead>
               <tr>
-                <th>채널</th>
-                <th>발신자</th>
-                <th>수신자</th>
-                <th>제목</th>
-                <th>발신시각</th>
-                <th>첨부</th>
-                <th>사유</th>
-                <th>가중치</th>
+                <th>파일명</th>
+                <th>민감도</th>
+                <th>분류</th>
+                <th>매칭 키워드</th>
+                <th>경로</th>
               </tr>
             </thead>
             <tbody>
-              {report.suspicious_emails.map((e) => (
-                <tr key={e.email_id}>
-                  <td>{channelLabel(e.channel_type)}</td>
-                  <td className="table__path">{e.sender}</td>
-                  <td className="table__path">{e.recipient}</td>
-                  <td className="table__name" title={e.subject}>{e.subject}</td>
-                  <td className="table__num">{formatDate(e.sent_at)}</td>
-                  <td>{e.has_attachment ? '있음' : '—'}</td>
-                  <td title={e.suspicion_reason}>{e.suspicion_reason}</td>
-                  <td className="table__num">{e.risk_weight}</td>
+              {report.suspicious_files.map((f) => (
+                <tr key={f.file_id}>
+                  <td className="table__name">{f.filename}</td>
+                  <td className="table__num">{(f.sensitivity_score * 100).toFixed(0)}%</td>
+                  <td><span className="table__cat">{f.sensitivity_category}</span></td>
+                  <td className="table__path">{f.matched_keywords.join(', ') || '—'}</td>
+                  <td className="table__path">{f.relative_path}</td>
                 </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <table className="table table--fixed">
+            <colgroup>
+              <col style={{ width: '40%' }} />
+              <col style={{ width: '20%' }} />
+              <col style={{ width: '35%' }} />
+              <col style={{ width: '5%' }} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>파일명</th>
+                <th>분류</th>
+                <th>매칭 키워드</th>
+                <th aria-label="펼치기" />
+              </tr>
+            </thead>
+            <tbody>
+              {report.suspicious_files.map((f) => (
+                <ExpandableRow key={f.file_id}>
+                  <td className="table__name">{f.filename}</td>
+                  <td><span className="table__cat">{f.sensitivity_category}</span></td>
+                  <td className="table__path">{f.matched_keywords.join(', ') || '—'}</td>
+                </ExpandableRow>
               ))}
             </tbody>
           </table>
@@ -234,36 +296,78 @@ function ExfiltrationReportView({ report }: { report: ExfiltrationReport }) {
       </section>
 
       <section className="vd__section">
-        <h3 className="vd__h">민감 파일 ({report.suspicious_files.length})</h3>
-        {report.suspicious_files.length === 0 ? (
-          <div className="table__msg">민감 파일 없음</div>
-        ) : (
-          <table className="table">
+        <h3 className="vd__h">의심 이메일 ({report.suspicious_emails.length})</h3>
+        {report.suspicious_emails.length === 0 ? (
+          <div className="table__msg">의심 이메일 없음</div>
+        ) : isFocused ? (
+          <table className="table table--wrap">
+            <colgroup>
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '20%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '6%' }} />
+            </colgroup>
             <thead>
               <tr>
-                <th>파일명</th>
-                <th>경로</th>
-                <th>민감도</th>
-                <th>분류</th>
-                <th>매칭 키워드</th>
+                <th>채널</th>
+                <th>제목</th>
+                <th>발신자</th>
+                <th>수신자</th>
+                <th>발신시각</th>
+                <th>첨부</th>
+                <th>의심 사유</th>
+                <th>가중치</th>
               </tr>
             </thead>
             <tbody>
-              {report.suspicious_files.map((f) => (
-                <tr key={f.file_id}>
-                  <td className="table__name" title={f.filename}>{f.filename}</td>
-                  <td className="table__path" title={f.relative_path}>{f.relative_path}</td>
-                  <td className="table__num">{f.sensitivity_score.toFixed(2)}</td>
-                  <td><span className="table__cat">{f.sensitivity_category}</span></td>
-                  <td className="table__path">{f.matched_keywords.join(', ') || '—'}</td>
+              {report.suspicious_emails.map((e) => (
+                <tr key={e.email_id}>
+                  <td><span className="table__cat">{channelLabel(e.channel_type)}</span></td>
+                  <td className="table__name">{e.subject}</td>
+                  <td className="table__path">{e.sender}</td>
+                  <td className="table__path">{e.recipient}</td>
+                  <td className="table__num">{formatDate(e.sent_at)}</td>
+                  <td>{e.has_attachment ? '있음' : '—'}</td>
+                  <td className="table__path">{e.suspicion_reason}</td>
+                  <td className="table__num">{e.risk_weight}</td>
                 </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <table className="table table--fixed">
+            <colgroup>
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '42%' }} />
+              <col style={{ width: '35%' }} />
+              <col style={{ width: '5%' }} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>채널</th>
+                <th>제목</th>
+                <th>수신자</th>
+                <th aria-label="펼치기" />
+              </tr>
+            </thead>
+            <tbody>
+              {report.suspicious_emails.map((e) => (
+                <ExpandableRow key={e.email_id}>
+                  <td><span className="table__cat">{channelLabel(e.channel_type)}</span></td>
+                  <td className="table__name">{e.subject}</td>
+                  <td className="table__path">{e.recipient}</td>
+                </ExpandableRow>
               ))}
             </tbody>
           </table>
         )}
       </section>
 
-      <BehaviorSection behavior={report.behavior_summary} />
+      <BehaviorSection behavior={report.behavior_summary} layout={layout} />
 
       <TimelineSection timeline={report.timeline} />
 
@@ -335,7 +439,7 @@ function CleanReportView({ report }: { report: CleanReport }) {
   )
 }
 
-export function VerdictViewer({ sessionId }: { sessionId: string | null }) {
+export function VerdictViewer({ sessionId, layout }: { sessionId: string | null; layout: ConsoleLayout }) {
   const { data, isLoading, isError } = useQuery<Session>({
     queryKey: ['session', sessionId],
     queryFn: () => fetchSession(sessionId as string),
@@ -368,5 +472,5 @@ export function VerdictViewer({ sessionId }: { sessionId: string | null }) {
   if (classified.kind === 'clean') {
     return <CleanReportView report={classified.report} />
   }
-  return <ExfiltrationReportView report={classified.report} />
+  return <ExfiltrationReportView report={classified.report} layout={layout} />
 }
