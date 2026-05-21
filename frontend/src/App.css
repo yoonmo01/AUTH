@@ -687,6 +687,22 @@ select.iform__input {
   transition: width 0.2s linear;
 }
 
+.load__waiting {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--fg-2);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  animation: load-blink 1.4s ease-in-out infinite;
+}
+
+@keyframes load-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
 /* ============================================================
    HEADER — instrument bar
    ============================================================ */
@@ -1068,6 +1084,67 @@ select.iform__input {
   animation: rise 0.22s var(--ease) both;
 }
 
+.modal__panel--wide {
+  width: min(1000px, 100%);
+}
+
+/* ── Email body modal ─────────────────────────── */
+.em__meta {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+}
+
+.em__meta-row {
+  display: flex;
+  gap: 12px;
+  padding: 5px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12px;
+}
+
+.em__meta-row:last-child {
+  border-bottom: none;
+}
+
+.em__meta-label {
+  flex: none;
+  width: 36px;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  padding-top: 1px;
+}
+
+.em__meta-value {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.em__meta-value--att {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.em__body {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 18px;
+  font-family: var(--f-mono);
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .modal__head {
   flex: none;
   display: flex;
@@ -1349,6 +1426,13 @@ select.iform__input {
   padding: 0 12px 0 14px;
   background: linear-gradient(180deg, var(--panel-2), #ffffff);
   border-bottom: 1px solid var(--line);
+}
+
+.zone__head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .zone__title {
@@ -1929,6 +2013,12 @@ select.iform__input {
   color: #ffffff;
 }
 
+/* compact variant for zone headers */
+.ltoggle--sm .ltoggle__opt {
+  padding: 3px 10px;
+  font-size: 10px;
+}
+
 .vd__section .table {
   border: 1px solid var(--line);
 }
@@ -2022,6 +2112,48 @@ select.iform__input {
   font-size: 12px;
   line-height: 1.6;
   color: var(--ink-dim);
+}
+
+/* behavior key-points list */
+.vd__behaviors {
+  list-style: none;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.vd__behavior {
+  padding: 7px 12px 7px 14px;
+  background: var(--panel-2);
+  border-left: 2px solid var(--warn);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+/* narrative timeline events inside tl__card */
+.tl__events {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.tl__event {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink);
+  padding-left: 10px;
+  position: relative;
+}
+
+.tl__event::before {
+  content: '·';
+  position: absolute;
+  left: 0;
+  color: var(--ink-faint);
 }
 
 /* report timeline */

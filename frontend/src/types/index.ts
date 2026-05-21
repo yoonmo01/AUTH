@@ -156,6 +156,7 @@ export type ChannelType = 'protonmail' | 'tmpbox' | 'anonymous_channel'
 export type EvidenceNodeType = 'USER' | 'FILE' | 'EMAIL' | 'CHANNEL' | 'LOG'
 export type EvidenceRelation =
   | 'USED_CHANNEL' | 'SENT_TO' | 'ATTACHED' | 'ACCESSED' | 'DELETED'
+  | 'USED' | 'TRIGGERED'
 
 export interface ReportSubject {
   name: string
@@ -212,6 +213,9 @@ export interface BehaviorSummary {
   deleted_files: DeletedFileEntry[]
   out_of_hours_activity: OutOfHoursActivity[]
   notes: string
+  // agent report format
+  overview?: string
+  key_behaviors?: string[]
 }
 
 // Report timeline — date-grouped event strings. Distinct from the

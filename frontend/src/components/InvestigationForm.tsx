@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { validateInvestigationForm, type FormField } from '../investigationForm'
-import { submitInvestigation, type InvestigationRequest } from '../api/client'
 import type { InvestigationInput } from '../flow'
 
 // ── Folder picker mode ───────────────────────────────────────
@@ -92,7 +91,7 @@ function RealFolderPicker({ value, onChange, onBlur }: FolderPickerProps) {
 }
 
 type Props = {
-  onSubmit: (input: InvestigationInput, sessionId: string) => void
+  onSubmit: (input: InvestigationInput) => void
   onBack: () => void
 }
 
@@ -102,18 +101,6 @@ const EMPTY: InvestigationInput = {
   position: '',
   hireDate: '',
   resignationDate: '',
-}
-
-function toRequest(input: InvestigationInput): InvestigationRequest {
-  return {
-    evidence_root_path: input.evidenceRootPath,
-    subject: {
-      name: input.name,
-      position: input.position,
-      hire_date: input.hireDate,
-      resignation_date: input.resignationDate,
-    },
-  }
 }
 
 function Field({
@@ -140,8 +127,6 @@ export function InvestigationForm({ onSubmit, onBack }: Props) {
   const [input, setInput] = useState<InvestigationInput>(EMPTY)
   const [touched, setTouched] = useState<Set<FormField>>(new Set())
   const [submitAttempted, setSubmitAttempted] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const { ok, errors } = validateInvestigationForm(input)
 
@@ -154,20 +139,11 @@ export function InvestigationForm({ onSubmit, onBack }: Props) {
   // An error surfaces once its field is touched or a submit was attempted.
   const show = (field: FormField) => touched.has(field) || submitAttempted
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitAttempted(true)
-    if (!ok || submitting) return
-    setSubmitting(true)
-    setSubmitError(null)
-    try {
-      const { sessionId } = await submitInvestigation(toRequest(input))
-      onSubmit(input, sessionId)
-      // On success the flow advances to 'loading' and this form unmounts.
-    } catch {
-      setSubmitError('분석 요청에 실패했습니다 — 다시 시도하세요')
-      setSubmitting(false)
-    }
+    if (!ok) return
+    onSubmit(input)
   }
 
   const folderProps: FolderPickerProps = {
@@ -237,18 +213,12 @@ export function InvestigationForm({ onSubmit, onBack }: Props) {
           </Field>
         </div>
 
-        {submitError && <div className="iform__submit-err">{submitError}</div>}
-
         <div className="iform__btns">
-          <button type="button" className="onb__btn" onClick={onBack} disabled={submitting}>
+          <button type="button" className="onb__btn" onClick={onBack}>
             뒤로
           </button>
-          <button
-            type="submit"
-            className="onb__btn onb__btn--primary"
-            disabled={!ok || submitting}
-          >
-            {submitting ? '요청 중…' : '분석 시작'}
+          <button type="submit" className="onb__btn onb__btn--primary" disabled={!ok}>
+            분석 시작
           </button>
         </div>
       </form>

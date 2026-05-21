@@ -115,6 +115,8 @@ function behaviorSummaryOf(v: unknown): BehaviorSummary {
     deleted_files: (Array.isArray(o.deleted_files) ? o.deleted_files : []).map(deletedFileOf),
     out_of_hours_activity: (Array.isArray(o.out_of_hours_activity) ? o.out_of_hours_activity : []).map(outOfHoursOf),
     notes: str(o.notes),
+    overview: typeof o.overview === 'string' ? o.overview : undefined,
+    key_behaviors: Array.isArray(o.key_behaviors) ? strArray(o.key_behaviors) : undefined,
   }
 }
 

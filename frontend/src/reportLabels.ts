@@ -23,6 +23,8 @@ const RELATION_LABELS: Record<EvidenceRelation, string> = {
   ATTACHED: '첨부',
   ACCESSED: '접근',
   DELETED: '삭제',
+  USED: '사용',
+  TRIGGERED: '유발',
 }
 
 export function channelLabel(code: string): string {

@@ -1,9 +1,10 @@
 import { useReducer } from 'react'
 import { flowReducer, initialFlowState } from './flow'
-import { ETL_STAGES, AGENT_STAGES } from './loadingProgress'
+import { ETL_STAGES } from './loadingProgress'
 import { LandingScreen } from './components/LandingScreen'
 import { InvestigationForm } from './components/InvestigationForm'
 import { PipelineScreen } from './components/PipelineScreen'
+import { LoadingPhase } from './components/LoadingPhase'
 import { Console } from './components/Console'
 
 // App shell — gates the investigation console behind the onboarding flow.
@@ -18,7 +19,7 @@ function App() {
     case 'form':
       return (
         <InvestigationForm
-          onSubmit={(input, sessionId) => dispatch({ type: 'SUBMIT', input, sessionId })}
+          onSubmit={(input) => dispatch({ type: 'SUBMIT', input })}
           onBack={() => dispatch({ type: 'BACK' })}
         />
       )
@@ -36,12 +37,9 @@ function App() {
 
     case 'loading':
       return (
-        <PipelineScreen
-          key="loading"
-          stages={AGENT_STAGES}
-          tag="PHASE · 에이전트 분석"
-          title="수사 분석 진행 중"
-          onDone={() => dispatch({ type: 'ANALYSIS_COMPLETE', sessionId: flow.sessionId })}
+        <LoadingPhase
+          input={flow.input!}
+          onDone={(sessionId) => dispatch({ type: 'ANALYSIS_COMPLETE', sessionId })}
         />
       )
 
