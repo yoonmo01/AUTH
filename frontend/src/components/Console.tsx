@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import { fetchSummary, fetchSessions } from '../api/client'
 import { selectLatestCompletedSession } from '../report'
@@ -131,6 +132,20 @@ export function Console({ initialSessionId }: Props) {
     setContentTab(0)
   }
 
+  // Toggle focused↔expanded. The View Transition lets Chromium morph the
+  // verdict panel (docks to the right column) and cross-fade the rest.
+  // flushSync forces React to commit the layout swap synchronously so the
+  // View Transition captures the new DOM (a plain setState is async and the
+  // snapshot would be taken before the layout changes).
+  function handleToggleLayout() {
+    const apply = () => setLayout(toggleLayout(layout))
+    if (document.startViewTransition) {
+      document.startViewTransition(() => flushSync(apply))
+    } else {
+      apply()
+    }
+  }
+
   const status = isError ? 'bad' : isLoading ? 'warn' : 'ok'
   const statusText = isError
     ? 'DB · OFFLINE'
@@ -173,10 +188,7 @@ export function Console({ initialSessionId }: Props) {
         </div>
 
         <div className="hdr__readouts">
-          <LayoutToggle
-            layout={layout}
-            onToggle={() => setLayout(toggleLayout(layout))}
-          />
+          <LayoutToggle layout={layout} onToggle={handleToggleLayout} />
           <span className="hdr__div" aria-hidden="true" />
           <Readout label="FILES" value={data?.files} loading={isLoading} accent />
           <Readout label="EMAILS" value={data?.emails} loading={isLoading} accent />

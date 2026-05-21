@@ -16,7 +16,7 @@ type Props = {
 
 export function ContentViewer({ selectedSessionId, tab, onTab, layout }: Props) {
   return (
-    <div className="zone">
+    <div className={`zone zone--verdict-${layout}`}>
       <div className="zone__tabs">
         {TABS.map((label, i) => (
           <button

@@ -981,6 +981,48 @@ select.iform__input {
   min-height: 0;
 }
 
+/* layout toggle — the verdict panel cross-slides between the focused and
+   expanded layouts. The two layouts carry distinct view-transition-names,
+   so View Transitions never pairs them into a resize morph: each panel
+   slides as a rigid block at its own size. The rest cross-fades (root). */
+.zone--verdict-focused {
+  view-transition-name: verdict-focused;
+}
+.zone--verdict-expanded {
+  view-transition-name: verdict-expanded;
+}
+
+@keyframes vp-slide-out-right {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes vp-slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+::view-transition-group(verdict-focused),
+::view-transition-group(verdict-expanded) {
+  animation: none;
+}
+::view-transition-old(verdict-focused),
+::view-transition-old(verdict-expanded) {
+  animation: vp-slide-out-right 0.55s var(--ease) both;
+}
+::view-transition-new(verdict-focused),
+::view-transition-new(verdict-expanded) {
+  animation: vp-slide-in-right 0.55s var(--ease) both;
+}
+
+::view-transition-group(root),
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.55s;
+  animation-timing-function: var(--ease);
+}
+
 /* directory tree (좌하단) */
 .dt,
 .dt__children {
