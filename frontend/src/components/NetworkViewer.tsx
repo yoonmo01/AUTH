@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type MutableRefObject,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -11,6 +18,8 @@ import {
   BaseEdge,
   EdgeLabelRenderer,
   getSmoothStepPath,
+  getNodesBounds,
+  getViewportForBounds,
   useReactFlow,
   type Node,
   type Edge,
@@ -19,11 +28,18 @@ import {
 } from '@xyflow/react'
 import dagre from '@dagrejs/dagre'
 import '@xyflow/react/dist/style.css'
+import { toPng } from 'html-to-image'
 import { fetchSession } from '../api/client'
 import { classifyReport } from '../report'
 import { relationLabel } from '../reportLabels'
+import { buildDownloadFilename } from '../downloadFilename'
 import type { ConsoleLayout } from '../consoleLayout'
 import type { EvidenceNode, EvidenceEdge, Session } from '../types'
+
+// ContentViewer(탭 바)가 "그래프 다운로드" 버튼을 소유하지만 export 자체는
+// ReactFlow 컨텍스트가 필요하므로, NetworkInner가 자신의 export 함수를 이
+// ref에 publish한다. 마운트 해제 시 null로 되돌림.
+export type GraphExportRef = MutableRefObject<(() => void) | null>
 
 const TYPE_META: Record<string, { label: string; style: CSSProperties }> = {
   USER:    { label: '사용자', style: { background: '#1559ee', color: '#fff', borderColor: '#1559ee', borderRadius: 18 } },
@@ -375,20 +391,26 @@ function DirectionToggle({
   )
 }
 
+// PNG 내보내기 해상도 — 그래프 전체를 프레임에 fit해도 가독성 유지되는 크기
+const EXPORT_W = 1920
+const EXPORT_H = 1200
+
 function NetworkInner({
   nodes: evidenceNodes,
   edges: evidenceEdges,
   layout,
   isModal,
   onFullscreen,
+  exportRef,
 }: {
   nodes: EvidenceNode[]
   edges: EvidenceEdge[]
   layout: ConsoleLayout
   isModal: boolean
   onFullscreen?: () => void
+  exportRef?: GraphExportRef
 }) {
-  const { fitView } = useReactFlow()
+  const { fitView, getNodes } = useReactFlow()
   const [visible, setVisible] = useState<Set<string>>(
     () => new Set(evidenceNodes.map((n) => n.type)),
   )
@@ -425,6 +447,49 @@ function NetworkInner({
     }, 0)
     return () => clearTimeout(t)
   }, [fitView, rfNodes, rfEdges])
+
+  // PNG 스냅샷 — 현재 pan/zoom과 무관하게 전체 노드를 export 프레임에 fit.
+  const exportPng = useCallback(() => {
+    // 풀스크린 모달이 열려 있을 수도 있으므로 메인 인스턴스의 캔버스만 선택
+    const viewportEl = document.querySelector<HTMLElement>(
+      '.net__canvas .react-flow__viewport',
+    )
+    const nodes = getNodes()
+    if (!viewportEl || nodes.length === 0) return
+    const bounds = getNodesBounds(nodes)
+    const { x, y, zoom } = getViewportForBounds(bounds, EXPORT_W, EXPORT_H, 0.2, 2, 0.12)
+    toPng(viewportEl, {
+      backgroundColor: '#ffffff',
+      width: EXPORT_W,
+      height: EXPORT_H,
+      style: {
+        width: `${EXPORT_W}px`,
+        height: `${EXPORT_H}px`,
+        transform: `translate(${x}px, ${y}px) scale(${zoom})`,
+      },
+    })
+      .then((dataUrl: string) => {
+        const link = document.createElement('a')
+        link.download = buildDownloadFilename({
+          kind: 'network-graph',
+          extension: 'png',
+          date: new Date(),
+        })
+        link.href = dataUrl
+        link.click()
+      })
+      .catch((err: unknown) => console.error('네트워크 그래프 내보내기 실패', err))
+  }, [getNodes])
+
+  // 메인 인스턴스(비-모달)만 export 함수를 ref에 publish. 모달이 같이
+  // 등록하면 ContentViewer의 ref가 모달 인스턴스로 덮여 위험.
+  useEffect(() => {
+    if (!exportRef || isModal) return
+    exportRef.current = exportPng
+    return () => {
+      exportRef.current = null
+    }
+  }, [exportRef, exportPng, isModal])
 
   function toggle(type: string) {
     setVisible((prev) => {
@@ -541,9 +606,11 @@ function FullscreenNetwork({
 export function NetworkViewer({
   layout,
   sessionId,
+  exportRef,
 }: {
   layout: ConsoleLayout
   sessionId: string | null
+  exportRef?: GraphExportRef
 }) {
   const [fullscreen, setFullscreen] = useState(false)
 
@@ -583,6 +650,7 @@ export function NetworkViewer({
           layout={layout}
           isModal={false}
           onFullscreen={() => setFullscreen(true)}
+          exportRef={exportRef}
         />
       </ReactFlowProvider>
       {fullscreen && (

@@ -3,6 +3,7 @@ import { fetchSession } from '../api/client'
 import { classifyReport } from '../report'
 import { channelLabel, nodeTypeLabel, relationLabel } from '../reportLabels'
 import { formatDate, formatSize } from '../format'
+import { buildDownloadFilename } from '../downloadFilename'
 import { VerdictBadge } from './VerdictBadge'
 import { ExpandableRow } from './ExpandableRow'
 import type { ConsoleLayout } from '../consoleLayout'
@@ -23,6 +24,28 @@ const RISK_LABELS: { key: keyof RiskBreakdown; label: string }[] = [
   { key: 'anomaly', label: '행동 이상' },
   { key: 'counter_evidence', label: '반증 감점' },
 ]
+
+// Print the verdict report to PDF. The print-only stylesheet (App.css)
+// hides the console chrome; document.title is swapped so the print dialog's
+// default "save as PDF" filename matches the report.
+// Exported so the action button can live in ContentViewer's tab bar.
+export function printVerdictReport(subjectName: string, verdict: string) {
+  const filename = buildDownloadFilename({
+    kind: 'verdict-report',
+    extension: 'pdf',
+    date: new Date(),
+    subjectName,
+    verdict,
+  })
+  const original = document.title
+  document.title = filename.replace(/\.pdf$/, '')
+  const restore = () => {
+    document.title = original
+    window.removeEventListener('afterprint', restore)
+  }
+  window.addEventListener('afterprint', restore)
+  window.print()
+}
 
 function RiskBreakdownSection({ breakdown }: { breakdown: RiskBreakdown }) {
   const rows = RISK_LABELS.filter((r) => typeof breakdown[r.key] === 'number')
