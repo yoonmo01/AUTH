@@ -3,6 +3,7 @@ import { fetchSession } from '../api/client'
 import { classifyReport } from '../report'
 import { channelLabel, nodeTypeLabel, relationLabel } from '../reportLabels'
 import { formatDate, formatSize } from '../format'
+import { buildDownloadFilename } from '../downloadFilename'
 import { VerdictBadge } from './VerdictBadge'
 import type {
   Session,
@@ -21,6 +22,41 @@ const RISK_LABELS: { key: keyof RiskBreakdown; label: string }[] = [
   { key: 'anomaly', label: '행동 이상' },
   { key: 'counter_evidence', label: '반증 감점' },
 ]
+
+// Print the verdict report to PDF. The print-only stylesheet (App.css)
+// hides the console chrome; document.title is swapped so the print dialog's
+// default "save as PDF" filename matches the report.
+function printVerdictReport(subjectName: string, verdict: string) {
+  const filename = buildDownloadFilename({
+    kind: 'verdict-report',
+    extension: 'pdf',
+    date: new Date(),
+    subjectName,
+    verdict,
+  })
+  const original = document.title
+  document.title = filename.replace(/\.pdf$/, '')
+  const restore = () => {
+    document.title = original
+    window.removeEventListener('afterprint', restore)
+  }
+  window.addEventListener('afterprint', restore)
+  window.print()
+}
+
+function VerdictActions({ subjectName, verdict }: { subjectName: string; verdict: string }) {
+  return (
+    <div className="vd__actions">
+      <button
+        type="button"
+        className="vd__pdf"
+        onClick={() => printVerdictReport(subjectName, verdict)}
+      >
+        PDF 다운로드
+      </button>
+    </div>
+  )
+}
 
 function RiskBreakdownSection({ breakdown }: { breakdown: RiskBreakdown }) {
   const rows = RISK_LABELS.filter((r) => typeof breakdown[r.key] === 'number')
@@ -163,6 +199,7 @@ function ExfiltrationReportView({ report }: { report: ExfiltrationReport }) {
   const { evidence_network: net } = report
   return (
     <div className="vd">
+      <VerdictActions subjectName={report.subject.name} verdict={report.verdict} />
       <header className="vd__hero vd__hero--alert">
         <div className="vd__verdict">
           <VerdictBadge verdict={report.verdict} />
@@ -288,6 +325,7 @@ function CleanReportView({ report }: { report: CleanReport }) {
   ]
   return (
     <div className="vd">
+      <VerdictActions subjectName={report.subject.name} verdict="CLEAN" />
       <header className="vd__hero vd__hero--clean">
         <div className="vd__verdict">
           <VerdictBadge verdict="CLEAN" />
