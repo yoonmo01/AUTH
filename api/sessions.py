@@ -37,7 +37,9 @@ def create_session(body: SessionCreate):
 @router.get("/sessions")
 def list_sessions(limit: int = Query(20, le=100)):
     return query(
-        f"SELECT id,query_text,query_intent,status,started_at,completed_at "
+        f"SELECT id, query_text, query_intent, status, started_at, completed_at, "
+        f"report_json->>'verdict' AS verdict, "
+        f"(report_json->>'risk_score')::int AS risk_score "
         f"FROM investigation_sessions ORDER BY started_at DESC LIMIT {limit};"
     )
 

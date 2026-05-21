@@ -21,7 +21,7 @@ export interface FlowState {
 
 export type FlowEvent =
   | { type: 'START' }
-  | { type: 'SUBMIT'; input: InvestigationInput; sessionId: string }
+  | { type: 'SUBMIT'; input: InvestigationInput }
   | { type: 'ETL_DONE' }
   | { type: 'ANALYSIS_COMPLETE'; sessionId: string | null }
   | { type: 'ANALYSIS_FAILED'; error: string }
@@ -46,13 +46,7 @@ export function flowReducer(state: FlowState, event: FlowEvent): FlowState {
 
     case 'SUBMIT':
       return state.phase === 'form'
-        ? {
-            ...state,
-            phase: 'etl',
-            input: event.input,
-            sessionId: event.sessionId,
-            error: null,
-          }
+        ? { ...state, phase: 'etl', input: event.input, sessionId: null, error: null }
         : state
 
     case 'ETL_DONE':

@@ -9,14 +9,18 @@
 #   GET /entities             → 엔티티 목록 (entity_type 필터 옵션, mention_count 내림차순)
 #                               반환: [{id, entity_type, canonical_value, mention_count}]
 
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import FileResponse
 
 from api.db import query
 from api.models import esc, require_uuid
 
 router = APIRouter()
+
+_DATA_ROOT = (Path(__file__).resolve().parents[1] / "data").resolve()
 
 
 @router.get("/summary")
@@ -41,6 +45,50 @@ def get_summary():
         "chunks":     int(chunks[0]["cnt"])     if chunks     else 0,
         "relations":  int(relations[0]["cnt"])  if relations  else 0,
         "etl_status": etl_status,
+    }
+
+
+@router.get("/timeline")
+def get_timeline(limit: int = Query(200, le=500)):
+    return query(
+        f"SELECT id, event_type, actor, target_path, process_name, event_at "
+        f"FROM activity_events ORDER BY event_at DESC LIMIT {limit};"
+    )
+
+
+@router.get("/files/{file_id}/raw")
+def get_file_raw(file_id: str):
+    require_uuid(file_id, "file_id")
+    rows = query(f"SELECT relative_path FROM files WHERE id='{file_id}';")
+    if not rows:
+        raise HTTPException(404, "File not found")
+    full_path = (_DATA_ROOT / rows[0]["relative_path"]).resolve()
+    if not str(full_path).startswith(str(_DATA_ROOT)):
+        raise HTTPException(403, "Access denied")
+    if not full_path.is_file():
+        raise HTTPException(404, "File not on disk")
+    return FileResponse(str(full_path))
+
+
+@router.get("/files/{file_id}/content")
+def get_file_content(file_id: str):
+    require_uuid(file_id, "file_id")
+    chunks = query(
+        f"SELECT chunk_text FROM content_chunks "
+        f"WHERE file_id='{file_id}' ORDER BY chunk_index;"
+    )
+    if not chunks:
+        raise HTTPException(404, "No content available")
+    html = "\n".join(
+        f"<p>{c['chunk_text']}</p>" for c in chunks if c.get("chunk_text")
+    )
+    return {
+        "html": html,
+        "file_id": file_id,
+        "filename": "",
+        "content_kind": "text",
+        "highlights": [],
+        "total_chunks": len(chunks),
     }
 
 

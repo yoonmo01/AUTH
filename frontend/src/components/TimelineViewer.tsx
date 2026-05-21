@@ -1,86 +1,60 @@
-import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { fetchTimeline } from '../api/client'
-import { formatDate } from '../format'
-import type { ActivityEvent } from '../types'
+import { fetchSession } from '../api/client'
+import { classifyReport } from '../report'
+import type { Session, ReportTimelineEntry } from '../types'
 
-// Event-type → color/label. Unknown types fall back to gray.
-const EVENT_META: Record<string, { label: string; color: string }> = {
-  file_copy: { label: '파일 복사', color: '#e0274a' },
-  file_move: { label: '파일 이동', color: '#e0274a' },
-  file_delete: { label: '파일 삭제', color: '#9c1029' },
-  email_send: { label: '이메일 발송', color: '#c2790b' },
-  usb_connect: { label: 'USB 연결', color: '#d6a400' },
-  web_access: { label: '웹 접근', color: '#1559ee' },
-}
-
-function metaFor(eventType: string): { label: string; color: string } {
-  return EVENT_META[eventType] ?? { label: eventType, color: '#93a1ad' }
-}
-
-function targetOf(ev: ActivityEvent): string {
-  return ev.target_path ?? ev.url ?? ev.filename ?? '—'
-}
-
-function TimelineRow({ ev }: { ev: ActivityEvent }) {
-  const { label, color } = metaFor(ev.event_type)
+function TimelineEntryRow({ entry }: { entry: ReportTimelineEntry }) {
   return (
     <li className="tl__item">
       <div className="tl__rail">
-        <span className="tl__dot" style={{ background: color }} />
+        <span className="tl__dot" style={{ background: '#1559ee' }} />
       </div>
       <div className="tl__card">
         <div className="tl__head">
-          <span className="tl__time">{formatDate(ev.event_at)}</span>
-          <span className="tl__type" style={{ color, borderColor: color }}>
-            {label}
-          </span>
+          <span className="tl__time">{entry.date}</span>
         </div>
-        <div className="tl__target" title={targetOf(ev)}>
-          {targetOf(ev)}
-        </div>
-        <div className="tl__meta">
-          <span className="tl__cell">
-            <b>프로세스</b> {ev.process_name ?? '—'}
-          </span>
-          <span className="tl__cell">
-            <b>actor</b> {ev.actor ?? '—'}
-          </span>
-        </div>
+        <ul className="tl__events">
+          {entry.events.map((ev, i) => (
+            <li key={i} className="tl__event">{ev}</li>
+          ))}
+        </ul>
       </div>
     </li>
   )
 }
 
-export function TimelineViewer() {
-  const { data, isLoading, isError } = useQuery<ActivityEvent[]>({
-    queryKey: ['timeline'],
-    queryFn: () => fetchTimeline(),
+export function TimelineViewer({ sessionId }: { sessionId: string | null }) {
+  const { data, isLoading, isError } = useQuery<Session>({
+    queryKey: ['session', sessionId],
+    queryFn: () => fetchSession(sessionId as string),
+    enabled: sessionId != null,
   })
 
-  // Chronological order; events without a timestamp sink to the bottom.
-  const events = useMemo(() => {
-    return [...(data ?? [])].sort((a, b) => {
-      if (!a.event_at) return 1
-      if (!b.event_at) return -1
-      return a.event_at.localeCompare(b.event_at)
-    })
-  }, [data])
+  if (sessionId == null) {
+    return (
+      <div className="ph">
+        <span className="ph__mark" aria-hidden="true">◇</span>
+        <span className="ph__txt">세션을 선택하면 타임라인이 표시됩니다</span>
+      </div>
+    )
+  }
+  if (isError) return <div className="table__msg">세션 조회 실패 — 백엔드 응답을 확인하세요</div>
+  if (isLoading || !data) return <div className="table__msg">타임라인 불러오는 중…</div>
 
-  if (isError) {
-    return <div className="table__msg">타임라인 조회 실패 — 백엔드 응답을 확인하세요</div>
+  const classified = classifyReport(data.report_json)
+  if (classified.kind !== 'exfiltration') {
+    return <div className="table__msg">타임라인 데이터가 없습니다</div>
   }
-  if (isLoading || !data) {
-    return <div className="table__msg">타임라인 불러오는 중…</div>
-  }
-  if (events.length === 0) {
-    return <div className="table__msg">표시할 활동 이벤트가 없습니다</div>
+
+  const timeline = classified.report.timeline
+  if (timeline.length === 0) {
+    return <div className="table__msg">표시할 타임라인 항목이 없습니다</div>
   }
 
   return (
     <ul className="tl">
-      {events.map((ev) => (
-        <TimelineRow key={ev.id} ev={ev} />
+      {timeline.map((entry) => (
+        <TimelineEntryRow key={entry.date} entry={entry} />
       ))}
     </ul>
   )

@@ -11,96 +11,116 @@ import {
   type Edge,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { fetchGraphNodes, fetchEmailEdges, fetchActivityEdges } from '../api/client'
-import { layoutGraphNodes, type LayoutDirection } from '../graphLayout'
+import { fetchSession } from '../api/client'
+import { classifyReport } from '../report'
+import { relationLabel } from '../reportLabels'
 import type { ConsoleLayout } from '../consoleLayout'
-import type { GraphNode, GraphEdge, NodeType } from '../types'
+import type { EvidenceNode, EvidenceEdge, Session } from '../types'
 
-// Per-type display style. Layout order/position lives in ../graphLayout.
-const TYPE_META: Record<NodeType, { label: string; style: CSSProperties }> = {
-  user:               { label: '사용자',     style: { background: '#1559ee', color: '#fff', borderColor: '#1559ee', borderRadius: 18 } },
-  email_identity:     { label: '메일 계정',  style: { background: '#e8f0ff', color: '#16222b', borderColor: '#3b82f6' } },
-  email:              { label: '이메일',     style: { background: '#e3f6fb', color: '#16222b', borderColor: '#0ea5d4' } },
-  file:               { label: '파일',       style: { background: '#ffffff', color: '#16222b', borderColor: '#bcc6cf' } },
-  external_recipient: { label: '외부 수신자', style: { background: '#fde6ea', color: '#e0274a', borderColor: '#e0274a', borderRadius: 18 } },
-  entity:             { label: '엔티티',     style: { background: '#fdf0db', color: '#8a5708', borderColor: '#c2790b' } },
-  event:              { label: '이벤트',     style: { background: '#eef1f5', color: '#16222b', borderColor: '#93a1ad', borderRadius: 3 } },
+const TYPE_META: Record<string, { label: string; style: CSSProperties }> = {
+  USER:    { label: '사용자', style: { background: '#1559ee', color: '#fff', borderColor: '#1559ee', borderRadius: 18 } },
+  FILE:    { label: '파일',   style: { background: '#ffffff', color: '#16222b', borderColor: '#bcc6cf' } },
+  EMAIL:   { label: '이메일', style: { background: '#e3f6fb', color: '#16222b', borderColor: '#0ea5d4' } },
+  CHANNEL: { label: '채널',   style: { background: '#fde6ea', color: '#e0274a', borderColor: '#e0274a', borderRadius: 18 } },
+  LOG:     { label: '로그',   style: { background: '#eef1f5', color: '#16222b', borderColor: '#93a1ad', borderRadius: 3 } },
 }
-const ALL_TYPES = Object.keys(TYPE_META) as NodeType[]
 
-function buildNodes(
-  graphNodes: GraphNode[],
-  visible: Set<NodeType>,
-  direction: LayoutDirection,
-): Node[] {
-  const filtered = graphNodes.filter(
-    (n) => TYPE_META[n.node_type] && visible.has(n.node_type),
-  )
-  const positioned = new Map(
-    layoutGraphNodes(filtered, direction).map((p) => [p.id, p]),
-  )
-  const out: Node[] = []
-  for (const n of filtered) {
-    const pos = positioned.get(n.node_id)
-    if (!pos) continue
-    out.push({
-      id: n.node_id,
-      position: { x: pos.x, y: pos.y },
-      data: { label: n.label },
-      sourcePosition: pos.sourcePosition,
-      targetPosition: pos.targetPosition,
-      style: { width: 188, fontSize: 11, border: '1px solid', ...TYPE_META[n.node_type].style },
+const RELATION_COLOR: Record<string, string> = {
+  DELETED:      '#9c1029',
+  TRIGGERED:    '#9c1029',
+  ACCESSED:     '#1559ee',
+  USED:         '#c2790b',
+  USED_CHANNEL: '#c2790b',
+  SENT_TO:      '#0ea5d4',
+  ATTACHED:     '#0ea5d4',
+}
+
+const TYPE_ORDER = ['USER', 'CHANNEL', 'FILE', 'EMAIL', 'LOG']
+
+function layoutNodes(nodes: EvidenceNode[]): Map<string, { x: number; y: number }> {
+  const byType: Record<string, EvidenceNode[]> = {}
+  for (const n of nodes) {
+    byType[n.type] = byType[n.type] ?? []
+    byType[n.type].push(n)
+  }
+  const positions = new Map<string, { x: number; y: number }>()
+  const ordered = [
+    ...TYPE_ORDER,
+    ...Object.keys(byType).filter((t) => !TYPE_ORDER.includes(t)),
+  ]
+  let y = 0
+  for (const type of ordered) {
+    const group = byType[type]
+    if (!group || group.length === 0) continue
+    const startX = -((group.length - 1) * 220) / 2
+    group.forEach((n, i) => {
+      positions.set(n.id, { x: startX + i * 220, y })
     })
+    y += 130
   }
-  return out
+  return positions
 }
 
-function buildEdges(
-  emailEdges: GraphEdge[],
-  activityEdges: GraphEdge[],
-  nodeIds: Set<string>,
-): Edge[] {
-  const make = (e: GraphEdge, kind: 'email' | 'activity'): Edge | null => {
-    // Drop dangling edges — a referenced node may be filtered out or missing.
-    if (!nodeIds.has(e.source_id) || !nodeIds.has(e.target_id)) return null
-    const isEmail = kind === 'email'
-    return {
-      id: e.edge_id,
-      source: e.source_id,
-      target: e.target_id,
-      label: e.label,
-      labelStyle: { fontSize: 9, fill: '#586875' },
-      labelBgStyle: { fill: '#ffffff' },
-      style: {
-        stroke: isEmail ? '#0ea5d4' : '#586875',
-        strokeWidth: isEmail ? Math.max(1, e.confidence * 3) : 1.5,
-        strokeDasharray: isEmail ? '6 4' : undefined,
-      },
-      markerEnd: { type: MarkerType.ArrowClosed, color: isEmail ? '#0ea5d4' : '#586875' },
-    }
-  }
-  return [
-    ...emailEdges.map((e) => make(e, 'email')),
-    ...activityEdges.map((e) => make(e, 'activity')),
-  ].filter((e): e is Edge => e !== null)
+function buildRFNodes(nodes: EvidenceNode[]): Node[] {
+  const positions = layoutNodes(nodes)
+  return nodes.map((n) => ({
+    id: n.id,
+    position: positions.get(n.id) ?? { x: 0, y: 0 },
+    data: { label: n.label },
+    style: {
+      width: 188,
+      fontSize: 11,
+      border: '1px solid',
+      ...(TYPE_META[n.type]?.style ?? { background: '#fff', borderColor: '#bcc6cf' }),
+    },
+  }))
 }
 
-function NetworkInner({ direction }: { direction: LayoutDirection }) {
-  const [visible, setVisible] = useState<Set<NodeType>>(() => new Set(ALL_TYPES))
+function buildRFEdges(edges: EvidenceEdge[], nodeIds: Set<string>): Edge[] {
+  return edges
+    .filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target))
+    .map((e, i) => {
+      const color = RELATION_COLOR[e.relation] ?? '#586875'
+      return {
+        id: `e-${i}`,
+        source: e.source,
+        target: e.target,
+        label: relationLabel(e.relation),
+        labelStyle: { fontSize: 9, fill: '#586875' },
+        labelBgStyle: { fill: '#ffffff' },
+        style: { stroke: color, strokeWidth: 1.5 },
+        markerEnd: { type: MarkerType.ArrowClosed, color },
+      }
+    })
+}
+
+function NetworkInner({
+  nodes: evidenceNodes,
+  edges: evidenceEdges,
+}: {
+  nodes: EvidenceNode[]
+  edges: EvidenceEdge[]
+}) {
   const { fitView } = useReactFlow()
+  const [visible, setVisible] = useState<Set<string>>(
+    () => new Set(evidenceNodes.map((n) => n.type)),
+  )
 
-  const nodesQ = useQuery({ queryKey: ['graph-nodes'], queryFn: () => fetchGraphNodes() })
-  const emailQ = useQuery({ queryKey: ['graph-edges-email'], queryFn: () => fetchEmailEdges() })
-  const actQ = useQuery({ queryKey: ['graph-edges-activity'], queryFn: () => fetchActivityEdges() })
+  const presentTypes = useMemo(
+    () => [...new Set(evidenceNodes.map((n) => n.type))],
+    [evidenceNodes],
+  )
 
   const { rfNodes, rfEdges } = useMemo(() => {
-    const nodes = buildNodes(nodesQ.data ?? [], visible, direction)
-    const ids = new Set(nodes.map((n) => n.id))
-    const edges = buildEdges(emailQ.data ?? [], actQ.data ?? [], ids)
-    return { rfNodes: nodes, rfEdges: edges }
-  }, [nodesQ.data, emailQ.data, actQ.data, visible, direction])
+    const filtered = evidenceNodes.filter((n) => visible.has(n.type))
+    const nodeIds = new Set(filtered.map((n) => n.id))
+    return {
+      rfNodes: buildRFNodes(filtered),
+      rfEdges: buildRFEdges(evidenceEdges, nodeIds),
+    }
+  }, [evidenceNodes, evidenceEdges, visible])
 
-  function toggle(type: NodeType) {
+  function toggle(type: string) {
     setVisible((prev) => {
       const next = new Set(prev)
       if (next.has(type)) next.delete(type)
@@ -109,28 +129,18 @@ function NetworkInner({ direction }: { direction: LayoutDirection }) {
     })
   }
 
-  if (nodesQ.isError || emailQ.isError || actQ.isError) {
-    return <div className="table__msg">그래프 조회 실패 — 백엔드 응답을 확인하세요</div>
-  }
-  if (nodesQ.isLoading || emailQ.isLoading || actQ.isLoading) {
-    return <div className="table__msg">네트워크 그래프 불러오는 중…</div>
-  }
-  if ((nodesQ.data ?? []).length === 0) {
-    return <div className="table__msg">표시할 그래프 노드가 없습니다</div>
-  }
-
   return (
     <div className="net">
       <div className="net__bar">
-        {ALL_TYPES.map((type) => (
+        {presentTypes.map((type) => (
           <label key={type} className="net__chk">
             <input
               type="checkbox"
               checked={visible.has(type)}
               onChange={() => toggle(type)}
             />
-            <span className="net__swatch" style={TYPE_META[type].style} />
-            {TYPE_META[type].label}
+            <span className="net__swatch" style={TYPE_META[type]?.style ?? {}} />
+            {TYPE_META[type]?.label ?? type}
           </label>
         ))}
         <button
@@ -143,7 +153,6 @@ function NetworkInner({ direction }: { direction: LayoutDirection }) {
       </div>
       <div className="net__canvas">
         <ReactFlow
-          key={direction}
           nodes={rfNodes}
           edges={rfEdges}
           fitView
@@ -160,12 +169,43 @@ function NetworkInner({ direction }: { direction: LayoutDirection }) {
   )
 }
 
-// expanded → top-down (narrow tall panel); focused → left-right (wide panel).
-export function NetworkViewer({ layout }: { layout: ConsoleLayout }) {
-  const direction: LayoutDirection = layout === 'expanded' ? 'vertical' : 'horizontal'
+export function NetworkViewer({
+  layout: _layout,
+  sessionId,
+}: {
+  layout: ConsoleLayout
+  sessionId: string | null
+}) {
+  const { data, isLoading, isError } = useQuery<Session>({
+    queryKey: ['session', sessionId],
+    queryFn: () => fetchSession(sessionId as string),
+    enabled: sessionId != null,
+  })
+
+  if (sessionId == null) {
+    return (
+      <div className="ph">
+        <span className="ph__mark" aria-hidden="true">◇</span>
+        <span className="ph__txt">세션을 선택하면 증거 네트워크가 표시됩니다</span>
+      </div>
+    )
+  }
+  if (isError) return <div className="table__msg">세션 조회 실패 — 백엔드 응답을 확인하세요</div>
+  if (isLoading || !data) return <div className="table__msg">네트워크 그래프 불러오는 중…</div>
+
+  const classified = classifyReport(data.report_json)
+  if (classified.kind !== 'exfiltration') {
+    return <div className="table__msg">증거 네트워크 데이터가 없습니다</div>
+  }
+
+  const { nodes, edges } = classified.report.evidence_network
+  if (nodes.length === 0) {
+    return <div className="table__msg">표시할 네트워크 노드가 없습니다</div>
+  }
+
   return (
     <ReactFlowProvider>
-      <NetworkInner direction={direction} />
+      <NetworkInner nodes={nodes} edges={edges} />
     </ReactFlowProvider>
   )
 }

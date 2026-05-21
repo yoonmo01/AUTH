@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { fetchDirectoryStructure } from '../api/client'
 import { buildDirectoryTree, type TreeNode } from '../directoryTree'
+import directoryStructure from '../fixtures/directory-structure.json'
 
 function TreeRow({
   node,
@@ -69,12 +68,6 @@ function TreeRow({
 }
 
 export function DirectoryTree() {
-  const { data, isLoading, isError } = useQuery<unknown>({
-    queryKey: ['directory-structure'],
-    queryFn: fetchDirectoryStructure,
-  })
-
-  // Folders start collapsed — the real structure has thousands of files.
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   function toggle(path: string) {
     setExpanded((prev) => {
@@ -85,17 +78,13 @@ export function DirectoryTree() {
     })
   }
 
-  const root = useMemo(() => buildDirectoryTree(data), [data])
+  const root = useMemo(() => buildDirectoryTree(directoryStructure), [])
 
   return (
     <div className="zone">
       <div className="zone__tab">DIRECTORY · C:</div>
       <div className="zone__body zone__body--tree">
-        {isError ? (
-          <div className="tree__msg">디렉토리 조회 실패 — 백엔드 응답을 확인하세요</div>
-        ) : isLoading ? (
-          <div className="tree__msg">불러오는 중…</div>
-        ) : root.children.length === 0 ? (
+        {root.children.length === 0 ? (
           <div className="tree__msg">표시할 디렉토리 구조가 없습니다</div>
         ) : (
           <ul className="dt">

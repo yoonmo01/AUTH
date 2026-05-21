@@ -35,23 +35,6 @@ async function get<T>(path: string): Promise<T> {
   throw new Error(`${res.status} ${res.statusText}: ${path}`)
 }
 
-async function post<T>(path: string, body: unknown): Promise<T> {
-  let res: Response
-  try {
-    res = await fetch(`${BASE}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-  } catch {
-    return orFixture<T>(path, 'network error')
-  }
-  if (res.ok) return (await res.json()) as T
-  if (res.status === 404 || res.status >= 500) {
-    return orFixture<T>(path, `HTTP ${res.status}`)
-  }
-  throw new Error(`${res.status} ${res.statusText}: ${path}`)
-}
 
 // ── Summary ──────────────────────────────────────────────────
 export const fetchSummary = (): Promise<Summary> =>
@@ -70,10 +53,12 @@ export const fetchFile = (id: string): Promise<FileRecord> =>
 export const fetchFileContent = (id: string): Promise<FileContent> =>
   get(`/files/${id}/content`)
 
-// Raw nested C: directory structure (stru.json shape) — consumed by the
-// directory tree builder, which validates the shape.
-export const fetchDirectoryStructure = (): Promise<unknown> =>
-  get('/files/structure')
+export const fetchFileRawText = (id: string): Promise<string> =>
+  fetch(`${BASE}/files/${id}/raw`)
+    .then((res) => {
+      if (!res.ok) throw new Error(`원본 파일 조회 실패 (${res.status})`)
+      return res.text()
+    })
 
 // ── Emails ───────────────────────────────────────────────────
 export const fetchEmails = (q: string, limit = 50): Promise<EmailRecord[]> => {
@@ -122,26 +107,31 @@ export const fetchSessions = (): Promise<Session[]> =>
 export const fetchSession = (id: string): Promise<Session> =>
   get(`/sessions/${id}`)
 
-// ── Investigation trigger ────────────────────────────────────
-// Backend dependency: the trigger endpoint does not exist yet — the call
-// falls back to a fixture (running session) until the backend ships it.
-export interface InvestigationRequest {
-  evidence_root_path: string
-  subject: {
-    name: string
-    position: string
-    hire_date: string
-    resignation_date: string
-  }
+// ── Agent run ────────────────────────────────────────────────
+// Calls POST /agent/run synchronously (no fixture fallback — backend must be running).
+export interface AgentRunResult {
+  session_id: string
+  verdict: string
+  risk_score: number
+  final_report: unknown
 }
 
-export interface SubmitResult {
-  sessionId: string
-  status: string
-}
-
-export const submitInvestigation = (req: InvestigationRequest): Promise<SubmitResult> =>
-  post('/investigations', req)
-
-export const pollSession = (id: string): Promise<Session> =>
-  get(`/sessions/${id}`)
+export const runAgentAnalysis = (input: {
+  name: string
+  position: string
+  hireDate: string
+  resignationDate: string
+}): Promise<AgentRunResult> =>
+  fetch(`${BASE}/agent/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      subject_name: input.name,
+      subject_position: input.position,
+      hire_date: input.hireDate,
+      resignation_date: input.resignationDate,
+    }),
+  }).then((res) => {
+    if (!res.ok) throw new Error(`에이전트 실행 실패 (${res.status})`)
+    return res.json() as Promise<AgentRunResult>
+  })

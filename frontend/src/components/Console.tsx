@@ -205,7 +205,6 @@ export function Console({ initialSessionId }: Props) {
             selectedFileId={selectedFile?.id ?? null}
             onSelectFile={setSelectedFile}
             selectedSessionId={selectedSessionId}
-            onSelectSession={handleSelectSession}
           />
           {tabPanel}
         </main>

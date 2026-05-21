@@ -8,7 +8,6 @@ export type TreeSelected =
   | { kind: 'category'; category: FileCategory }
   | { kind: 'emails' }
   | { kind: 'entities' }
-  | { kind: 'sessions' }
 
 export function sameSelection(a: TreeSelected, b: TreeSelected): boolean {
   if (a.kind !== b.kind) return false
@@ -57,7 +56,7 @@ export function TreeViewer({ selected, onSelect }: Props) {
   // etl_status rows are per (category, etl_status) — aggregate per category.
   const counts = new Map<string, number>()
   for (const row of data?.etl_status ?? []) {
-    counts.set(row.category, (counts.get(row.category) ?? 0) + (row.cnt ?? 0))
+    counts.set(row.category, (counts.get(row.category) ?? 0) + Number(row.cnt ?? 0))
   }
   const categories = [...counts.entries()]
   const fileTotal = categories.reduce((n, [, c]) => n + c, 0)
@@ -117,15 +116,6 @@ export function TreeViewer({ selected, onSelect }: Props) {
                 count={data?.entities}
                 on={selected.kind === 'entities'}
                 onClick={() => onSelect({ kind: 'entities' })}
-              />
-            </li>
-            <li>
-              <TreeNode
-                root
-                mark="⊕"
-                label="수사 결과"
-                on={selected.kind === 'sessions'}
-                onClick={() => onSelect({ kind: 'sessions' })}
               />
             </li>
           </ul>

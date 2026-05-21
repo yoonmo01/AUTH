@@ -116,7 +116,7 @@ report_task: |
     "report_type": "EXFILTRATION_SUSPECTED",
     "verdict": "{verdict}",
     "risk_score": {risk_score},
-    "risk_breakdown": {{}},
+    "risk_breakdown": {risk_breakdown},
     "subject": {{"name": "{subject_name}", "position": "{subject_position}", "hire_date": "{hire_date}", "resignation_date": "{resignation_date}"}},
     "summary": "요약 문장",
     "suspicious_emails": [

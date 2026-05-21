@@ -52,7 +52,26 @@ function RiskBreakdownSection({ breakdown }: { breakdown: RiskBreakdown }) {
 }
 
 function BehaviorSection({ behavior }: { behavior: BehaviorSummary }) {
-  const { highlight_dates, deleted_files, out_of_hours_activity, notes } = behavior
+  const { highlight_dates, deleted_files, out_of_hours_activity, notes, overview, key_behaviors } = behavior
+
+  // Agent report format: overview + key_behaviors
+  if (overview || (key_behaviors && key_behaviors.length > 0)) {
+    return (
+      <section className="vd__section">
+        <h3 className="vd__h">행동 이상</h3>
+        {overview && <p className="vd__notes">{overview}</p>}
+        {key_behaviors && key_behaviors.length > 0 && (
+          <ul className="vd__behaviors">
+            {key_behaviors.map((b, i) => (
+              <li key={i} className="vd__behavior">{b}</li>
+            ))}
+          </ul>
+        )}
+      </section>
+    )
+  }
+
+  // Legacy format
   const empty =
     highlight_dates.length === 0 &&
     deleted_files.length === 0 &&
