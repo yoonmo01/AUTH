@@ -1,6 +1,6 @@
 // Pure builder: nested directory structure → C: directory tree.
 // Input is the raw nested form (stru.json shape): each node has a name, a
-// type, and directories carry children. Folders aggregate an investigation
+// type, and directories carry children. Folders aggregate an audit
 // coverage from their descendant files. Side-effect free for unit testing.
 
 export type Coverage = 'full' | 'partial' | 'none'

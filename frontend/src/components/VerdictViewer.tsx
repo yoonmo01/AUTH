@@ -473,7 +473,7 @@ export function VerdictViewer({ sessionId, layout }: { sessionId: string | null;
     return (
       <div className="ph">
         <span className="ph__mark" aria-hidden="true">◇</span>
-        <span className="ph__txt">수사 결과 목록에서 세션을 선택하세요</span>
+        <span className="ph__txt">점검 결과 목록에서 세션을 선택하세요</span>
       </div>
     )
   }
@@ -481,7 +481,7 @@ export function VerdictViewer({ sessionId, layout }: { sessionId: string | null;
     return <div className="table__msg">세션 조회 실패 — 백엔드 응답을 확인하세요</div>
   }
   if (isLoading || !data) {
-    return <div className="table__msg">수사 보고서 불러오는 중…</div>
+    return <div className="table__msg">점검 보고서 불러오는 중…</div>
   }
 
   const classified = classifyReport(data.report_json)

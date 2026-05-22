@@ -40,7 +40,7 @@ export const AGENT_STAGES: Stage[] = [
   { id: 'cross_ref', label: '교차 대조', durationMs: 1600 },
   { id: 'counter', label: 'STEP 5 · 반증 검증', durationMs: 2200 },
   { id: 'scoring', label: '리스크 스코어링', durationMs: 1400 },
-  { id: 'report', label: '최종 수사 보고서 생성', durationMs: 1800 },
+  { id: 'report', label: '최종 점검 보고서 생성', durationMs: 1800 },
 ]
 
 export function totalDuration(stages: Stage[]): number {

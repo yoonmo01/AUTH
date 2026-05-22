@@ -75,8 +75,8 @@ type Props = {
   initialSessionId?: string | null
 }
 
-// Investigation console. Two layouts (./consoleLayout): 'focused' opens just
-// the verdict tab panel; 'expanded' is the 4-zone workspace reached via the
+// Audit console. Two layouts (./consoleLayout): 'focused' opens just the
+// verdict tab panel; 'expanded' is the 4-zone workspace reached via the
 // "모두 보기" button in the verdict panel.
 export function Console({ initialSessionId }: Props) {
   const { data, isLoading, isError } = useQuery<Summary>({
@@ -170,7 +170,7 @@ export function Console({ initialSessionId }: Props) {
               ◆
             </span>
             <span className="brand__name">HYENA</span>
-            <span className="brand__sub">EXFILTRATION&nbsp;FORENSICS</span>
+            <span className="brand__sub">AUDIT&nbsp;MANAGEMENT</span>
           </div>
           <div className={`conn conn--${status}`} role="status">
             <span className="conn__dot" aria-hidden="true" />
@@ -224,7 +224,7 @@ export function Console({ initialSessionId }: Props) {
       )}
 
       <footer className="statusbar">
-        <span className="statusbar__tag">HYENA INVESTIGATION CONSOLE</span>
+        <span className="statusbar__tag">HYENA AUDIT CONSOLE</span>
         <span className="statusbar__msg">{footMsg}</span>
         <span className="statusbar__ver">v0.1 · SLICE&nbsp;9</span>
       </footer>

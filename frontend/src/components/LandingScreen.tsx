@@ -20,14 +20,14 @@ export function LandingScreen({ onStart }: Props) {
           <span className="land__mark" aria-hidden="true">◆</span>
           <span className="land__name">HYENA</span>
         </div>
-        <span className="land__sub">EXFILTRATION&nbsp;FORENSICS</span>
+        <span className="land__sub">AUDIT&nbsp;MANAGEMENT</span>
 
         <div className="land__rule" aria-hidden="true" />
 
-        <h1 className="land__title">퇴사자 데이터 유출 탐지 시스템</h1>
+        <h1 className="land__title">정기 점검 시스템</h1>
         <p className="land__desc">
-          퇴사자의 디스크 이미지를 분석해 데이터 유출 여부를 자동 판정하고
-          수사 보고서를 생성합니다. 기준선 수립부터 반증 검증까지 STEP 1~5
+          직원의 업무 데이터를 분석해 대외 정보 유출 위험을 자동 점검하고
+          점검 보고서를 생성합니다. 기준선 수립부터 반증 검증까지 STEP 1~5
           파이프라인이 증거를 교차 대조합니다.
         </p>
 
@@ -40,11 +40,11 @@ export function LandingScreen({ onStart }: Props) {
         </ul>
 
         <button type="button" className="land__cta" onClick={onStart}>
-          새 수사 시작 <span aria-hidden="true">→</span>
+          새 점검 시작 <span aria-hidden="true">→</span>
         </button>
       </main>
 
-      <div className="land__foot">HYENA INVESTIGATION CONSOLE · v0.1</div>
+      <div className="land__foot">HYENA AUDIT CONSOLE · v0.1</div>
     </div>
   )
 }

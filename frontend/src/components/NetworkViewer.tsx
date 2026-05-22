@@ -410,7 +410,7 @@ function NetworkInner({
   onFullscreen?: () => void
   exportRef?: GraphExportRef
 }) {
-  const { fitView, getNodes } = useReactFlow()
+  const { fitView, getNodes, getViewport, setViewport } = useReactFlow()
   const [visible, setVisible] = useState<Set<string>>(
     () => new Set(evidenceNodes.map((n) => n.type)),
   )
@@ -448,38 +448,54 @@ function NetworkInner({
     return () => clearTimeout(t)
   }, [fitView, rfNodes, rfEdges])
 
-  // PNG 스냅샷 — 현재 pan/zoom과 무관하게 전체 노드를 export 프레임에 fit.
-  const exportPng = useCallback(() => {
-    // 풀스크린 모달이 열려 있을 수도 있으므로 메인 인스턴스의 캔버스만 선택
-    const viewportEl = document.querySelector<HTMLElement>(
-      '.net__canvas .react-flow__viewport',
-    )
+  // PNG 스냅샷 — `.react-flow` 컨테이너 전체를 캡처해서 viewport와 별도
+  // 컨테이너인 edge-label-renderer까지 포함시킨다. 위치는 style transform을
+  // 직접 덮어쓰는 대신 setViewport()로 정식 호출 → viewport와 label-renderer
+  // transform이 React Flow 내부에서 동기 업데이트되므로 라벨이 어긋나지 않음.
+  // 캡처 직후 원래 pan/zoom으로 복원해서 사용자 화면은 잠깐 깜빡일 뿐.
+  const exportPng = useCallback(async () => {
+    const flowEl = document.querySelector<HTMLElement>('.net__canvas .react-flow')
     const nodes = getNodes()
-    if (!viewportEl || nodes.length === 0) return
+    if (!flowEl || nodes.length === 0) return
+
     const bounds = getNodesBounds(nodes)
     const { x, y, zoom } = getViewportForBounds(bounds, EXPORT_W, EXPORT_H, 0.2, 2, 0.12)
-    toPng(viewportEl, {
-      backgroundColor: '#ffffff',
-      width: EXPORT_W,
-      height: EXPORT_H,
-      style: {
-        width: `${EXPORT_W}px`,
-        height: `${EXPORT_H}px`,
-        transform: `translate(${x}px, ${y}px) scale(${zoom})`,
-      },
-    })
-      .then((dataUrl: string) => {
-        const link = document.createElement('a')
-        link.download = buildDownloadFilename({
-          kind: 'network-graph',
-          extension: 'png',
-          date: new Date(),
-        })
-        link.href = dataUrl
-        link.click()
+
+    const saved = getViewport()
+    flowEl.classList.add('is-exporting')
+    setViewport({ x, y, zoom })
+
+    // viewport + label-renderer transform이 DOM에 반영될 때까지 2프레임 대기
+    await new Promise<void>((r) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => r())),
+    )
+
+    try {
+      const dataUrl = await toPng(flowEl, {
+        backgroundColor: '#ffffff',
+        width: EXPORT_W,
+        height: EXPORT_H,
+        cacheBust: true,
+        style: {
+          width: `${EXPORT_W}px`,
+          height: `${EXPORT_H}px`,
+        },
       })
-      .catch((err: unknown) => console.error('네트워크 그래프 내보내기 실패', err))
-  }, [getNodes])
+      const link = document.createElement('a')
+      link.download = buildDownloadFilename({
+        kind: 'network-graph',
+        extension: 'png',
+        date: new Date(),
+      })
+      link.href = dataUrl
+      link.click()
+    } catch (err: unknown) {
+      console.error('네트워크 그래프 내보내기 실패', err)
+    } finally {
+      flowEl.classList.remove('is-exporting')
+      setViewport(saved)
+    }
+  }, [getNodes, getViewport, setViewport])
 
   // 메인 인스턴스(비-모달)만 export 함수를 ref에 publish. 모달이 같이
   // 등록하면 ContentViewer의 ref가 모달 인스턴스로 덮여 위험.

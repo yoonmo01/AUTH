@@ -160,8 +160,8 @@ export function InvestigationForm({ onSubmit, onBack }: Props) {
     <div className="iform">
       <form className="iform__panel" onSubmit={handleSubmit} noValidate>
         <div className="iform__panel-corner" aria-hidden="true" />
-        <span className="iform__tag">PHASE · 수사 요청</span>
-        <h1 className="iform__title">새 수사 입력</h1>
+        <span className="iform__tag">PHASE · 점검 요청</span>
+        <h1 className="iform__title">새 점검 입력</h1>
 
         <Field
           label="분석 대상 폴더"

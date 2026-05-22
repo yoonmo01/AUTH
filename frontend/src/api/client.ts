@@ -129,6 +129,7 @@ export const runAgentAnalysis = (input: {
   position: string
   hireDate: string
   resignationDate: string
+  sessionId?: string
 }): Promise<AgentRunResult> =>
   fetch(`${BASE}/agent/run`, {
     method: 'POST',
@@ -138,8 +139,100 @@ export const runAgentAnalysis = (input: {
       subject_position: input.position,
       hire_date: input.hireDate,
       resignation_date: input.resignationDate,
+      session_id: input.sessionId,
     }),
   }).then((res) => {
     if (!res.ok) throw new Error(`에이전트 실행 실패 (${res.status})`)
     return res.json() as Promise<AgentRunResult>
+  })
+
+// ── 정기 점검 / 사원·관리자 API ─────────────────────────────
+
+export interface LoginResponse {
+  role: string
+  employee_id?: string
+  admin_id?: string
+  name: string
+  position?: string
+  department?: string
+}
+
+export const postLogin = (body: {
+  role: string
+  id: string
+  password?: string
+}): Promise<LoginResponse> =>
+  fetch(`${BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then((res) => {
+    if (!res.ok) throw new Error(`${res.status}`)
+    return res.json() as Promise<LoginResponse>
+  })
+
+export const postAudit = (body: {
+  employee_id: string
+  quarter: string
+  evidence_root_path?: string
+}): Promise<{ session_id: string; status: string }> =>
+  fetch(`${BASE}/audits`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then((res) => {
+    if (!res.ok) throw new Error(`audit 생성 실패 (${res.status})`)
+    return res.json()
+  })
+
+export const postConsents = (
+  sessionId: string,
+  body: object,
+): Promise<{ ok: boolean; count: number }> =>
+  fetch(`${BASE}/sessions/${sessionId}/consents`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then((res) => {
+    if (!res.ok) throw new Error(`동의 저장 실패 (${res.status})`)
+    return res.json()
+  })
+
+export const postExplanation = (
+  sessionId: string,
+  body: { employee_id: string; text: string },
+): Promise<{ ok: boolean }> =>
+  fetch(`${BASE}/sessions/${sessionId}/explanations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then((res) => {
+    if (!res.ok) throw new Error(`소명 제출 실패 (${res.status})`)
+    return res.json()
+  })
+
+export interface InboxEntry {
+  session_id: string
+  employee_id: string
+  name: string
+  position: string
+  department: string
+  quarter: string
+  started_at: string
+  completed_at: string | null
+  verdict: string
+  risk_score: string | number | null
+  status: string
+  submitted_at: string
+  reviewed_at: string | null
+  explanation_text: string | null
+}
+
+export const fetchInbox = (): Promise<InboxEntry[]> =>
+  get('/admin/inbox')
+
+export const markReviewed = (sessionId: string): Promise<{ ok: boolean }> =>
+  fetch(`${BASE}/admin/inbox/${sessionId}/review`, { method: 'PATCH' }).then((res) => {
+    if (!res.ok) throw new Error(`검토 처리 실패 (${res.status})`)
+    return res.json()
   })

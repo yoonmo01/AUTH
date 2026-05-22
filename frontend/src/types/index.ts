@@ -108,7 +108,7 @@ export interface FileContent {
 }
 
 // ============================================================
-// Investigation Cases & Findings
+// Audit Cases & Findings
 // ============================================================
 
 export type Severity = 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO'

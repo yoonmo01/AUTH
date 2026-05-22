@@ -1,5 +1,5 @@
 # api/sessions.py
-# 역할: 수사 세션(Investigation Sessions) 관리 라우터
+# 역할: 점검 세션 관리 라우터
 #   POST  /sessions                          → 세션 생성 (query_text, case_id)
 #                                              반환: {id, status:"running"}
 #   GET   /sessions                          → 세션 목록 (limit 기본 20)
@@ -48,7 +48,9 @@ def list_sessions(limit: int = Query(20, le=100)):
 def get_session(session_id: str):
     require_uuid(session_id, "session_id")
     rows = query(
-        f"SELECT id,query_text,query_intent,status,started_at,completed_at,report_json "
+        f"SELECT id,query_text,query_intent,status,started_at,completed_at,report_json, "
+        f"report_json->>'verdict' AS verdict, "
+        f"(report_json->>'risk_score')::int AS risk_score "
         f"FROM investigation_sessions WHERE id='{session_id}';"
     )
     if not rows:
@@ -60,6 +62,12 @@ def get_session(session_id: str):
             row["report_json"] = json.loads(row["report_json"])
         except (json.JSONDecodeError, TypeError):
             row["report_json"] = None
+    if row.get("verdict") is None and isinstance(row.get("report_json"), dict):
+        report = row["report_json"]
+        if isinstance(report.get("final_report"), dict):
+            report = report["final_report"]
+        row["verdict"] = report.get("verdict")
+        row["risk_score"] = report.get("risk_score")
     return row
 
 

@@ -1,12 +1,12 @@
 # api/cases.py
-# 역할: 수사 사건(Cases) 관리 라우터
-#   POST  /cases              → 사건 생성 (title, description, charge_type)
+# 역할: 점검 케이스(Cases) 관리 라우터
+#   POST  /cases              → 케이스 생성 (title, description, charge_type)
 #                               반환: {id, status:"active"}
-#   GET   /cases              → 사건 목록 (limit 기본 20)
+#   GET   /cases              → 케이스 목록 (limit 기본 20)
 #                               반환: [{id, title, description, charge_type, status, created_at, updated_at}]
-#   GET   /cases/{case_id}    → 사건 상세 + 연결된 세션 목록
-#                               반환: {사건 필드..., sessions:[{id, query_text, status, ...}]}
-#   PATCH /cases/{case_id}    → 사건 상태 변경 (active|paused|closed|archived)
+#   GET   /cases/{case_id}    → 케이스 상세 + 연결된 세션 목록
+#                               반환: {케이스 필드..., sessions:[{id, query_text, status, ...}]}
+#   PATCH /cases/{case_id}    → 케이스 상태 변경 (active|paused|closed|archived)
 #                               반환: {case_id, status}
 # 쓰는 테이블: cases, investigation_sessions (읽기)
 

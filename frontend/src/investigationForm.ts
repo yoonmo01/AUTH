@@ -1,4 +1,4 @@
-// Pure validator for the investigation input form (온보딩 S3).
+// Pure validator for the legacy audit input form (온보딩 S3).
 // Side-effect free so it can be unit tested in isolation.
 
 import type { InvestigationInput } from './flow'
@@ -23,7 +23,7 @@ function isValidDate(s: string): boolean {
 }
 
 /**
- * Validate the investigation request form. Returns field-level Korean
+ * Validate the audit request form. Returns field-level Korean
  * error messages; `ok` is true only when every field passes.
  */
 export function validateInvestigationForm(input: InvestigationInput): ValidationResult {
