@@ -24,6 +24,23 @@ function formatReviewedAt(value: string | null | undefined): string {
   }).format(date)
 }
 
+function AdminExplanationPanel({ text }: { text: string | null | undefined }) {
+  const trimmed = text?.trim()
+
+  return (
+    <aside className="adetail__explain-panel" aria-label="직원 소명">
+      <div className="adetail__explain-head">
+        <h2>직원 소명</h2>
+      </div>
+      {trimmed ? (
+        <p className="adetail__explain-text">{trimmed}</p>
+      ) : (
+        <p className="adetail__explain-empty">제출된 직원 소명이 없습니다.</p>
+      )}
+    </aside>
+  )
+}
+
 export function AdminSessionDetail({ sessionId, onBack }: Props) {
   const [tab, setTab] = useState<Tab>('report')
   const [reviewing, setReviewing] = useState(false)
@@ -95,15 +112,19 @@ export function AdminSessionDetail({ sessionId, onBack }: Props) {
           </p>
         ) : tab === 'report' ? (
           <div className="adetail__report">
-            <EmployeeReport
-              sessionId={sessionId}
-              employeeId={entry.employee_id}
-              employeeName={entry.name}
-              quarter={entry.quarter}
-              readOnly
-              explanationText={entry.explanation_text ?? ''}
-              onSubmitted={() => undefined}
-            />
+            <div className="adetail__report-shell">
+              <div className="adetail__report-main">
+                <EmployeeReport
+                  sessionId={sessionId}
+                  employeeId={entry.employee_id}
+                  employeeName={entry.name}
+                  quarter={entry.quarter}
+                  readOnly
+                  onSubmitted={() => undefined}
+                />
+              </div>
+              <AdminExplanationPanel text={entry.explanation_text} />
+            </div>
           </div>
         ) : (
           <div className="adetail__analysis">

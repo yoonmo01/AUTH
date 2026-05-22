@@ -211,6 +211,19 @@ export const postExplanation = (
     return res.json()
   })
 
+export const skipExplanation = (
+  sessionId: string,
+  body: { employee_id: string },
+): Promise<{ ok: boolean; skipped: boolean }> =>
+  fetch(`${BASE}/sessions/${sessionId}/explanations/skip`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then((res) => {
+    if (!res.ok) throw new Error(`소명 생략 처리 실패 (${res.status})`)
+    return res.json()
+  })
+
 export interface InboxEntry {
   session_id: string
   employee_id: string

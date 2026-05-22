@@ -9,11 +9,18 @@ type Props = {
 }
 
 type Filter = 'all' | 'submitted' | 'reviewed'
+type ExplanationFilter = 'all' | 'required' | 'not-required'
 
 const FILTERS: { key: Filter; label: string }[] = [
   { key: 'all', label: '전체' },
   { key: 'submitted', label: '미검토' },
   { key: 'reviewed', label: '검토완료' },
+]
+
+const EXPLANATION_FILTERS: { key: ExplanationFilter; label: string }[] = [
+  { key: 'all', label: '소명 전체' },
+  { key: 'required', label: '소명 필요' },
+  { key: 'not-required', label: '소명 불필요' },
 ]
 
 const VERDICT_LABELS: Record<string, string> = {
@@ -42,6 +49,17 @@ function riskValue(value: string | number | null | undefined): string {
   return `${Number(value).toLocaleString()}점`
 }
 
+function riskNumber(value: string | number | null | undefined): number {
+  if (value === null || value === undefined || value === '') return 0
+  const n = Number(value)
+  return Number.isFinite(n) ? n : 0
+}
+
+function requiresExplanation(entry: InboxEntry): boolean {
+  if (entry.verdict === 'LOW' || entry.verdict === 'CLEAN') return false
+  return riskNumber(entry.risk_score) > 20
+}
+
 function formatDate(value: string | null | undefined): string {
   if (!value) return '-'
   const date = new Date(value)
@@ -60,6 +78,8 @@ function sortInbox(rows: InboxEntry[]): InboxEntry[] {
 
 export function AdminDashboard({ adminName, onOpenSession, onLogout }: Props) {
   const [filter, setFilter] = useState<Filter>('all')
+  const [explanationFilter, setExplanationFilter] = useState<ExplanationFilter>('all')
+  const [search, setSearch] = useState('')
 
   const {
     data: inbox = [],
@@ -74,14 +94,24 @@ export function AdminDashboard({ adminName, onOpenSession, onLogout }: Props) {
   })
 
   const filtered = useMemo(() => {
-    const rows = filter === 'all'
-      ? inbox
-      : inbox.filter((entry) => entry.status === filter)
+    const needle = search.trim().toLowerCase()
+    const rows = inbox.filter((entry) => {
+      if (filter !== 'all' && entry.status !== filter) return false
+      if (explanationFilter === 'required' && !requiresExplanation(entry)) return false
+      if (explanationFilter === 'not-required' && requiresExplanation(entry)) return false
+      if (!needle) return true
+      return (
+        entry.name.toLowerCase().includes(needle) ||
+        entry.employee_id.toLowerCase().includes(needle) ||
+        entry.position.toLowerCase().includes(needle)
+      )
+    })
     return sortInbox(rows)
-  }, [filter, inbox])
+  }, [explanationFilter, filter, inbox, search])
 
   const submittedCount = inbox.filter((entry) => entry.status === 'submitted').length
   const reviewedCount = inbox.filter((entry) => entry.status === 'reviewed').length
+  const explanationRequiredCount = inbox.filter(requiresExplanation).length
 
   return (
     <div className="adash">
@@ -115,19 +145,50 @@ export function AdminDashboard({ adminName, onOpenSession, onLogout }: Props) {
             <span className="adash__metric-label">검토완료</span>
             <strong className="adash__metric-value">{reviewedCount}</strong>
           </div>
+          <div className="adash__metric">
+            <span className="adash__metric-label">소명 필요</span>
+            <strong className="adash__metric-value">{explanationRequiredCount}</strong>
+          </div>
         </section>
 
-        <div className="adash__filters" role="tablist" aria-label="상태 필터">
-          {FILTERS.map((item) => (
-            <button
-              key={item.key}
-              className={`adash__filter${filter === item.key ? ' adash__filter--active' : ''}`}
-              type="button"
-              onClick={() => setFilter(item.key)}
-            >
-              {item.label}
-            </button>
-          ))}
+        <div className="adash__tools">
+          <label className="adash__search">
+            <span className="adash__search-icon" aria-hidden="true">⌕</span>
+            <input
+              className="adash__search-input"
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="사원 이름, 사번, 직급 검색"
+              aria-label="관리자 목록 검색"
+            />
+          </label>
+
+          <div className="adash__filters" role="tablist" aria-label="상태 필터">
+            {FILTERS.map((item) => (
+              <button
+                key={item.key}
+                className={`adash__filter${filter === item.key ? ' adash__filter--active' : ''}`}
+                type="button"
+                onClick={() => setFilter(item.key)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="adash__filters" role="tablist" aria-label="소명 필요 여부 필터">
+            {EXPLANATION_FILTERS.map((item) => (
+              <button
+                key={item.key}
+                className={`adash__filter${explanationFilter === item.key ? ' adash__filter--active' : ''}`}
+                type="button"
+                onClick={() => setExplanationFilter(item.key)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <section className="adash__panel">
@@ -149,6 +210,7 @@ export function AdminDashboard({ adminName, onOpenSession, onLogout }: Props) {
                   <th>분기</th>
                   <th>판정</th>
                   <th>점수</th>
+                  <th>소명</th>
                   <th>제출일시</th>
                   <th>상태</th>
                 </tr>
@@ -177,6 +239,11 @@ export function AdminDashboard({ adminName, onOpenSession, onLogout }: Props) {
                       </span>
                     </td>
                     <td className="adash__mono">{riskValue(entry.risk_score)}</td>
+                    <td>
+                      <span className={`adash__explain ${requiresExplanation(entry) ? 'adash__explain--required' : 'adash__explain--skip'}`}>
+                        {requiresExplanation(entry) ? '필요' : '불필요'}
+                      </span>
+                    </td>
                     <td>{formatDate(entry.submitted_at)}</td>
                     <td>
                       <span className={`adash__status adash__status--${entry.status}`}>

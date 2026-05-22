@@ -102,3 +102,7 @@ class ConsentSubmit(BaseModel):
 class ExplanationSubmit(BaseModel):
     employee_id: str
     text: str
+
+
+class ExplanationSkip(BaseModel):
+    employee_id: str
