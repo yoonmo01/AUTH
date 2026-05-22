@@ -325,6 +325,10 @@ def get_email_attachments(email_id: str) -> str:
     Returns:
         첨부파일 목록 JSON 문자열 (id, attachment_name, size_bytes, extracted_path)
     """
+    import re
+    if not re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", email_id.strip()):
+        return "[]"
+
     conn = get_pg_conn()
     try:
         with conn.cursor() as cur:
@@ -335,7 +339,7 @@ def get_email_attachments(email_id: str) -> str:
                 WHERE email_id = %s
                 ORDER BY attachment_name
                 """,
-                (email_id,),
+                (email_id.strip(),),
             )
             return _fetchall_as_json(cur)
     finally:

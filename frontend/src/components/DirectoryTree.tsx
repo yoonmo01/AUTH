@@ -22,7 +22,7 @@ function TreeRow({
           <span className="dt__caret" aria-hidden="true" />
           <span
             className={`dt__cov dt__cov--${node.investigated ? 'full' : 'none'}`}
-            title={node.investigated ? '조사됨' : '미조사'}
+            title={node.investigated ? '점검됨' : '미점검'}
             aria-hidden="true"
           />
           <span className="dt__name" title={node.name}>{node.name}</span>
@@ -45,7 +45,7 @@ function TreeRow({
         </span>
         <span
           className={`dt__cov dt__cov--${node.coverage}`}
-          title={`조사 범위: ${node.coverage}`}
+          title={`점검 범위: ${node.coverage}`}
           aria-hidden="true"
         />
         <span className="dt__name" title={node.name}>{node.name}</span>

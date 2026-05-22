@@ -6,6 +6,7 @@
 -- ============================================================
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TYPE file_category AS ENUM (
     'document', 'image', 'audio',
@@ -488,6 +489,26 @@ CREATE INDEX idx_rel_type   ON file_relations(relation_type);
 
 
 -- ============================================================
+-- AUDIT / EMPLOYEE LAYER (사내 정기 점검) — investigation_sessions FK 위해 먼저 정의
+-- ============================================================
+
+CREATE TABLE employees (
+    employee_id  VARCHAR(20) PRIMARY KEY,
+    name         VARCHAR(50) NOT NULL,
+    position     VARCHAR(50) NOT NULL,
+    department   VARCHAR(50) NOT NULL,
+    created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE auth_admins (
+    admin_id      VARCHAR(50) PRIMARY KEY,
+    password_hash TEXT NOT NULL,
+    name          VARCHAR(50),
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+
+-- ============================================================
 -- INVESTIGATION LAYER
 -- ============================================================
 
@@ -513,7 +534,9 @@ CREATE TABLE investigation_sessions (
     started_at          TIMESTAMPTZ DEFAULT NOW(),
     completed_at        TIMESTAMPTZ,
     report_storage_uri  TEXT,
-    report_json         JSONB
+    report_json         JSONB,
+    employee_id         VARCHAR(20) REFERENCES employees(employee_id),
+    quarter             TEXT
 );
 
 CREATE TABLE findings (
@@ -554,6 +577,45 @@ CREATE TABLE finding_evidence (
 
 CREATE INDEX idx_fevidence_finding ON finding_evidence(finding_id);
 CREATE INDEX idx_fevidence_source  ON finding_evidence(evidence_source, evidence_id);
+
+
+-- ============================================================
+-- AUDIT CONSENT / EXPLANATION / INBOX LAYER
+-- ============================================================
+
+CREATE TABLE consents (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id          UUID NOT NULL REFERENCES investigation_sessions(id) ON DELETE CASCADE,
+    employee_id         VARCHAR(20) NOT NULL REFERENCES employees(employee_id),
+    consent_type        TEXT NOT NULL CHECK (consent_type IN ('system_use','messenger_access')),
+    agreement_text      TEXT NOT NULL,
+    signature_png_b64   TEXT NOT NULL,
+    signature_hash      VARCHAR(64) NOT NULL,
+    client_ip           VARCHAR(45),
+    user_agent          TEXT,
+    signed_at           TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (session_id, consent_type)
+);
+
+CREATE INDEX idx_consents_session ON consents(session_id);
+
+CREATE TABLE explanations (
+    session_id    UUID PRIMARY KEY REFERENCES investigation_sessions(id) ON DELETE CASCADE,
+    employee_id   VARCHAR(20) NOT NULL REFERENCES employees(employee_id),
+    text          TEXT NOT NULL,
+    submitted_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE admin_inbox (
+    session_id    UUID PRIMARY KEY REFERENCES investigation_sessions(id) ON DELETE CASCADE,
+    employee_id   VARCHAR(20) NOT NULL REFERENCES employees(employee_id),
+    status        TEXT NOT NULL DEFAULT 'submitted'
+                  CHECK (status IN ('submitted','reviewed')),
+    submitted_at  TIMESTAMPTZ DEFAULT NOW(),
+    reviewed_at   TIMESTAMPTZ
+);
+
+CREATE INDEX idx_inbox_status ON admin_inbox(status, submitted_at DESC);
 
 
 -- ============================================================
@@ -846,3 +908,16 @@ WHERE r.recipient IS NOT NULL
   AND r.recipient NOT ILIKE '%noreply%'
   AND r.recipient NOT ILIKE '%undisclosed%'
   AND r.recipient NOT ILIKE '%@%@%';
+
+
+-- ============================================================
+-- SEED DATA (사내 정기 점검 데모)
+-- ============================================================
+
+INSERT INTO employees(employee_id, name, position, department) VALUES
+    ('EMP001', '강수민', '대리', '구매팀'),
+    ('EMP002', '이지수', '사원', '구매팀'),
+    ('EMP003', '장국주', '과장', '구매팀');
+
+INSERT INTO auth_admins(admin_id, password_hash, name) VALUES
+    ('admin', crypt('admin1234', gen_salt('bf', 10)), '관리자');

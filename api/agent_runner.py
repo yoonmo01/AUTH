@@ -32,6 +32,7 @@ class AgentRunRequest(BaseModel):
     resignation_date: str
     source_label: str = "HYENA CTF"
     case_id: Optional[str] = None
+    session_id: Optional[str] = None
 
 
 def _get_analysis_start(user_name: str) -> str:
@@ -55,7 +56,8 @@ def _get_analysis_start(user_name: str) -> str:
                      WHERE sender ILIKE %s
                 ) sub
                 """,
-                (f"%{user_name}%",) * 5,
+                (f"%{user_name}%", f"%{user_name}%",
+                 f"%{user_name}%", f"%{user_name}%", f"%{user_name}%"),
             )
             result = cur.fetchone()[0]
             return str(result) if result else "2021-01-01"
@@ -111,13 +113,15 @@ def _run_agent_thread(session_id: str, body: AgentRunRequest) -> None:
 @router.post("/run", status_code=202)
 def run_agent(body: AgentRunRequest):
     """에이전트 파이프라인을 백그라운드 스레드로 기동하고 session_id를 즉시 반환한다."""
-    session_id = str(uuid.uuid4())
-    case_sql = f"'{body.case_id}'" if body.case_id else "NULL"
-
-    execute(
-        f"INSERT INTO investigation_sessions(id,case_id,query_text,query_intent,status,started_at) "
-        f"VALUES('{session_id}',{case_sql},'에이전트 자동 분석','agent_run','running',NOW());"
-    )
+    if body.session_id:
+        session_id = body.session_id
+    else:
+        session_id = str(uuid.uuid4())
+        case_sql = f"'{body.case_id}'" if body.case_id else "NULL"
+        execute(
+            f"INSERT INTO investigation_sessions(id,case_id,query_text,query_intent,status,started_at) "
+            f"VALUES('{session_id}',{case_sql},'에이전트 자동 분석','agent_run','running',NOW());"
+        )
 
     register(session_id)
 

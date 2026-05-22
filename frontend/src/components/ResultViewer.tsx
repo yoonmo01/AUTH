@@ -260,7 +260,7 @@ export function ResultViewer({
       <div className="zone__body zone__body--table">
         {view === 'files' && fileMode === 'suspicious' ? (
           selectedSessionId == null ? (
-            <div className="table__msg">수사 결과를 먼저 선택하세요</div>
+            <div className="table__msg">점검 결과를 먼저 선택하세요</div>
           ) : (
             <>
               {/* 의심 파일 */}

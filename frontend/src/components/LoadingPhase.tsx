@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { runAgentAnalysis } from '../api/client'
-import type { InvestigationInput } from '../flow'
 
 type Props = {
-  input: InvestigationInput
+  sessionId: string
+  name: string
+  position: string
   onDone: (sessionId: string | null) => void
 }
 
@@ -13,7 +14,7 @@ const LIVE_STEPS = [
   { id: 'cross_ref', label: '교차 대조' },
   { id: 'step5',     label: 'STEP 5 · 반증 검증' },
   { id: 'scoring',   label: '리스크 스코어링' },
-  { id: 'report',    label: '최종 수사 보고서 생성' },
+  { id: 'report',    label: '최종 점검 보고서 생성' },
 ]
 
 const MARK: Record<string, string> = {
@@ -29,26 +30,33 @@ function formatElapsed(ms: number): string {
   return `${mm}:${ss}`
 }
 
-export function LoadingPhase({ input, onDone }: Props) {
-  // startedRef prevents React StrictMode double-invocation from calling the agent twice.
+export function LoadingPhase({ sessionId, name, position, onDone }: Props) {
   const startedRef = useRef(false)
   const [doneSteps, setDoneSteps] = useState<Set<string>>(new Set())
   const [activeStep, setActiveStep] = useState<string | null>(null)
   const [elapsedMs, setElapsedMs] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const stoppedRef = useRef(false)
+
+  useEffect(() => {
+    const startAt = Date.now()
+    const timer = setInterval(() => {
+      if (stoppedRef.current) return
+      setElapsedMs(Date.now() - startAt)
+    }, 150)
+    return () => clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     if (startedRef.current) return
     startedRef.current = true
 
-    const startAt = Date.now()
-    const timer = setInterval(() => setElapsedMs(Date.now() - startAt), 150)
-
     runAgentAnalysis({
-      name: input.name,
-      position: input.position,
-      hireDate: input.hireDate,
-      resignationDate: input.resignationDate,
+      name,
+      position,
+      hireDate: '2020-01-01',
+      resignationDate: '2021-02-28',
+      sessionId,
     })
       .then(({ session_id }) => {
         const es = new EventSource(`/api/agent/events/${session_id}`)
@@ -67,11 +75,11 @@ export function LoadingPhase({ input, onDone }: Props) {
             setDoneSteps((prev) => new Set([...prev, ev.step]))
             setActiveStep(null)
           } else if (ev.event === 'completed') {
-            clearInterval(timer)
+            stoppedRef.current = true
             es.close()
             onDone(ev.session_id ?? session_id)
           } else if (ev.event === 'error') {
-            clearInterval(timer)
+            stoppedRef.current = true
             es.close()
             setError(ev.message ?? '에이전트 실행 오류')
           }
@@ -83,11 +91,9 @@ export function LoadingPhase({ input, onDone }: Props) {
         }
       })
       .catch((err: unknown) => {
-        clearInterval(timer)
+        stoppedRef.current = true
         setError(String(err))
       })
-
-    return () => clearInterval(timer)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const steps = LIVE_STEPS.map((s) => ({
@@ -110,7 +116,7 @@ export function LoadingPhase({ input, onDone }: Props) {
           <span className="load__tag">PHASE · 에이전트 분석</span>
           <span className="load__clock">{formatElapsed(elapsedMs)}</span>
         </div>
-        <h1 className="load__title">수사 분석 진행 중</h1>
+        <h1 className="load__title">정기 점검 분석 중</h1>
 
         <ol className="load__steps">
           {steps.map((s) => (

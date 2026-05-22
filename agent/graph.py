@@ -31,9 +31,11 @@ from agent.state import InvestigationState
 def _cross_reference(suspicious_channels: list, sensitive_files: list) -> list:
     """유출 경로로 나간 파일 중 민감 파일이 포함된 경우를 매핑한다."""
     results = []
-    sensitive_filenames = {f["filename"].lower() for f in sensitive_files}
+    sensitive_filenames = {f["filename"].lower() for f in sensitive_files if isinstance(f, dict) and "filename" in f}
 
     for channel in suspicious_channels:
+        if not isinstance(channel, dict):
+            continue
         for attachment in channel.get("attachments", []):
             fname = attachment.get("filename", "") or attachment.get("attachment_name", "")
             if fname.lower() in sensitive_filenames:

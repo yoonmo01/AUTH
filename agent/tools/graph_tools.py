@@ -111,6 +111,10 @@ def get_file_metadata(file_id: str) -> str:
     Returns:
         파일 메타데이터 JSON 문자열 (filename, relative_path, extension, file_size_bytes 등)
     """
+    import re
+    if not re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", file_id.strip()):
+        return json.dumps({"error": f"invalid uuid: {file_id}"})
+
     from agent.tools.rdb_tools import get_pg_conn
     conn = get_pg_conn()
     try:
@@ -122,7 +126,7 @@ def get_file_metadata(file_id: str) -> str:
                 FROM files
                 WHERE id = %s
                 """,
-                (file_id,),
+                (file_id.strip(),),
             )
             row = cur.fetchone()
             if row is None:

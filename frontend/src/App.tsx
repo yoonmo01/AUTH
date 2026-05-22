@@ -1,15 +1,16 @@
 import { useReducer } from 'react'
 import { flowReducer, initialFlowState } from './flow'
 import { ETL_STAGES } from './loadingProgress'
-import { LandingScreen } from './components/LandingScreen'
-import { InvestigationForm } from './components/InvestigationForm'
-import { PipelineScreen } from './components/PipelineScreen'
+import { LoginScreen } from './components/LoginScreen'
+import { EmployeeForm } from './components/EmployeeForm'
+import { ConsentScreen } from './components/ConsentScreen'
 import { LoadingPhase } from './components/LoadingPhase'
+import { EmployeeReport } from './components/EmployeeReport'
+import { PipelineScreen } from './components/PipelineScreen'
 import { Console } from './components/Console'
+import { AdminDashboard } from './components/AdminDashboard'
+import { AdminSessionDetail } from './components/AdminSessionDetail'
 
-// App shell — gates the investigation console behind the onboarding flow.
-// The flow state machine (./flow) drives which screen renders.
-// Dev shortcut: ?session=<id> jumps directly to the console with that session.
 function App() {
   const params = new URLSearchParams(window.location.search)
   const devSession = params.get('session')
@@ -21,12 +22,28 @@ function App() {
 
   switch (flow.phase) {
     case 'landing':
-      return <LandingScreen onStart={() => dispatch({ type: 'START' })} />
-
-    case 'form':
       return (
-        <InvestigationForm
-          onSubmit={(input) => dispatch({ type: 'SUBMIT', input })}
+        <LoginScreen
+          onLoginEmployee={(profile) => dispatch({ type: 'LOGIN_EMPLOYEE', profile })}
+          onLoginAdmin={(profile) => dispatch({ type: 'LOGIN_ADMIN', profile })}
+        />
+      )
+
+    case 'employee-form':
+      return (
+        <EmployeeForm
+          profile={flow.employeeProfile!}
+          onSubmit={(input, sessionId) => dispatch({ type: 'SUBMIT', input, sessionId })}
+          onBack={() => dispatch({ type: 'BACK' })}
+        />
+      )
+
+    case 'consent':
+      return (
+        <ConsentScreen
+          sessionId={flow.sessionId!}
+          employeeId={flow.employeeProfile!.employee_id}
+          onDone={() => dispatch({ type: 'CONSENT_DONE' })}
           onBack={() => dispatch({ type: 'BACK' })}
         />
       )
@@ -45,8 +62,51 @@ function App() {
     case 'loading':
       return (
         <LoadingPhase
-          input={flow.input!}
-          onDone={(sessionId) => dispatch({ type: 'ANALYSIS_COMPLETE', sessionId })}
+          sessionId={flow.sessionId!}
+          name={flow.employeeProfile!.name}
+          position={flow.employeeProfile!.position}
+          onDone={(sid) => dispatch({ type: 'ANALYSIS_COMPLETE', sessionId: sid })}
+        />
+      )
+
+    case 'employee-report':
+      return (
+        <EmployeeReport
+          sessionId={flow.sessionId!}
+          employeeId={flow.employeeProfile!.employee_id}
+          employeeName={flow.employeeProfile!.name}
+          quarter={flow.input!.quarter}
+          onSubmitted={() => dispatch({ type: 'EXPLANATION_SUBMITTED' })}
+        />
+      )
+
+    case 'submitted':
+      return (
+        <div className="subdone">
+          <div className="subdone__panel">
+            <h2 className="subdone__title">제출 완료</h2>
+            <p className="subdone__text">소명이 관리자에게 전달되었습니다.</p>
+            <button className="subdone__btn" onClick={() => dispatch({ type: 'RESET' })}>
+              처음으로
+            </button>
+          </div>
+        </div>
+      )
+
+    case 'admin-dashboard':
+      return (
+        <AdminDashboard
+          adminName={flow.adminProfile?.name ?? '관리자'}
+          onOpenSession={(sessionId) => dispatch({ type: 'OPEN_SESSION', sessionId })}
+          onLogout={() => dispatch({ type: 'RESET' })}
+        />
+      )
+
+    case 'admin-detail':
+      return (
+        <AdminSessionDetail
+          sessionId={flow.sessionId!}
+          onBack={() => dispatch({ type: 'BACK_TO_DASHBOARD' })}
         />
       )
 
