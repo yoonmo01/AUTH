@@ -84,7 +84,6 @@ export function AdminAnalysisWorkspace({ sessionId, entry }: Props) {
           employeeName={entry.name}
           quarter={entry.quarter}
           readOnly
-          explanationText={entry.explanation_text ?? ''}
           onSubmitted={() => undefined}
         />
       </section>

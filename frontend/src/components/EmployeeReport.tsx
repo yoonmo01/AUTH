@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { fetchSession, fetchFindings, postExplanation } from '../api/client'
+import { fetchSession, fetchFindings, postExplanation, skipExplanation } from '../api/client'
 import type { Finding } from '../types'
 import { classifyReport } from '../report'
 
@@ -104,6 +104,11 @@ function findingsFromTable(findings: Finding[]): ReportItem[] {
     }))
 }
 
+function requiresExplanation(verdict: string, riskScore: number): boolean {
+  if (verdict === 'LOW' || verdict === 'CLEAN') return false
+  return riskScore > 20
+}
+
 export function EmployeeReport({
   sessionId,
   employeeId,
@@ -142,6 +147,18 @@ export function EmployeeReport({
     }
   }
 
+  async function handleSkipExplanation() {
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      await skipExplanation(sessionId, { employee_id: employeeId })
+      onSubmitted()
+    } catch {
+      setSubmitError('확인 완료 처리에 실패했습니다. 다시 시도해주세요.')
+      setSubmitting(false)
+    }
+  }
+
   if (sessionLoading || findingsLoading) {
     return (
       <div className="erpt">
@@ -154,6 +171,7 @@ export function EmployeeReport({
   const verdict = reportView?.verdict ?? (session?.verdict as string) ?? ''
   const riskScore = reportView?.riskScore ?? session?.risk_score ?? 0
   const verdictInfo = VERDICT_KO[verdict] ?? { label: verdict || '분석 중', cls: '' }
+  const explanationRequired = requiresExplanation(verdict, Number(riskScore))
 
   const displayFindings = reportView
     ? reportView.items
@@ -190,7 +208,7 @@ export function EmployeeReport({
         )}
       </div>
 
-      {!readOnly && (
+      {!readOnly && explanationRequired && (
         <div className="erpt__explain">
           <label className="erpt__explain-label">
             위 활동에 대한 소명을 입력해주세요
@@ -210,6 +228,23 @@ export function EmployeeReport({
             onClick={handleSubmit}
           >
             {submitting ? '제출 중...' : '제출하기'}
+          </button>
+        </div>
+      )}
+
+      {!readOnly && !explanationRequired && (
+        <div className="erpt__explain erpt__explain--skip">
+          <p className="erpt__skip-title">소명 제출 대상이 아닙니다.</p>
+          <p className="erpt__skip-text">
+            위험도가 LOW이거나 위험 점수가 20점 이하인 점검은 별도 소명을 받지 않습니다.
+          </p>
+          {submitError && <p className="erpt__err">{submitError}</p>}
+          <button
+            className="erpt__submit-btn"
+            disabled={submitting}
+            onClick={handleSkipExplanation}
+          >
+            {submitting ? '처리 중...' : '확인 완료'}
           </button>
         </div>
       )}
