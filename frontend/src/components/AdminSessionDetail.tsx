@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchInbox, markReviewed } from '../api/client'
 import { EmployeeReport } from './EmployeeReport'
-import { Console } from './Console'
+import { AdminAnalysisWorkspace } from './AdminAnalysisWorkspace'
 
 type Props = {
   sessionId: string
@@ -106,8 +106,8 @@ export function AdminSessionDetail({ sessionId, onBack }: Props) {
             />
           </div>
         ) : (
-          <div className="adetail__console">
-            <Console initialSessionId={sessionId} />
+          <div className="adetail__analysis">
+            <AdminAnalysisWorkspace sessionId={sessionId} entry={entry} />
           </div>
         )}
       </main>
