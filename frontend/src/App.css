@@ -3702,10 +3702,7 @@ select.iform__input {
 .adetail-analysis {
   height: 100%;
   display: grid;
-  grid-template-columns:
-    minmax(320px, 0.9fr)
-    minmax(360px, 1fr)
-    minmax(460px, 1.2fr);
+  grid-template-columns: minmax(360px, 420px) minmax(520px, 1fr);
   gap: 10px;
   padding: 10px;
   min-height: 0;
@@ -3719,28 +3716,38 @@ select.iform__input {
   overflow: hidden;
 }
 
-.adetail-analysis__left {
-  overflow: auto;
-}
-
-.adetail-analysis__left .erpt {
-  width: auto;
-  max-width: none;
-  height: auto;
-  min-height: 100%;
-  margin: 0;
-  padding: 1.1rem 1.1rem 2rem;
-  border: 0;
-  box-shadow: none;
-}
-
-.adetail-analysis__left .erpt__item {
-  padding: 0.65rem;
+.adetail-analysis__side {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(180px, 0.42fr) minmax(280px, 0.58fr);
+  gap: 10px;
 }
 
 .adetail-analysis__middle {
   display: flex;
   flex-direction: column;
+}
+
+.adetail-analysis__explain {
+  display: flex;
+  flex-direction: column;
+}
+
+.adetail-analysis__explain-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.9rem;
+}
+
+.adetail-analysis__explain-text {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.84rem;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .adetail-analysis__head {
@@ -3960,7 +3967,15 @@ select.iform__input {
     grid-template-columns: 1fr;
   }
 
+  .adetail-analysis__side {
+    min-height: 620px;
+  }
+
   .adetail-analysis__panel {
     min-height: 420px;
+  }
+
+  .adetail-analysis__explain {
+    min-height: 220px;
   }
 }
