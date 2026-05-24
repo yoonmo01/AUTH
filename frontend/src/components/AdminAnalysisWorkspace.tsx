@@ -25,9 +25,15 @@ type Props = {
 }
 
 function riskTone(weight: number): { mark: string; cls: string } {
-  if (weight >= 30) return { mark: '🔴', cls: 'adetail-analysis__pill--high' }
-  if (weight >= 15) return { mark: '🟡', cls: 'adetail-analysis__pill--med' }
+  if (weight >= 30) return { mark: 'HIGH', cls: 'adetail-analysis__pill--high' }
+  if (weight >= 15) return { mark: 'MED', cls: 'adetail-analysis__pill--med' }
   return { mark: '', cls: '' }
+}
+
+function fileExt(filename: string): string {
+  const dot = filename.lastIndexOf('.')
+  if (dot < 0) return 'FILE'
+  return filename.slice(dot + 1).toUpperCase().slice(0, 4)
 }
 
 function ExplanationPanel({ text }: { text: string | null }) {
@@ -35,9 +41,9 @@ function ExplanationPanel({ text }: { text: string | null }) {
 
   return (
     <section className="adetail-analysis__panel adetail-analysis__explain" aria-label="직원 소명">
-      <header className="adetail-analysis__head">
+      {/* <header className="adetail-analysis__head">
         <h2 className="adetail-analysis__title">직원 소명</h2>
-      </header>
+      </header> */}
       <div className="adetail-analysis__explain-body">
         {trimmed ? (
           <p className="adetail-analysis__explain-text">{trimmed}</p>
@@ -49,8 +55,11 @@ function ExplanationPanel({ text }: { text: string | null }) {
   )
 }
 
+type ListTab = 'all' | 'file' | 'email'
+
 export function AdminAnalysisWorkspace({ sessionId, entry }: Props) {
   const [contentTab, setContentTab] = useState(0)
+  const [listTab, setListTab] = useState<ListTab>('all')
   const [selectedFile, setSelectedFile] = useState<SuspiciousFile | null>(null)
   const [selectedEmail, setSelectedEmail] = useState<SuspiciousEmail | null>(null)
   const queryClient = useQueryClient()
@@ -98,6 +107,25 @@ export function AdminAnalysisWorkspace({ sessionId, entry }: Props) {
             </span>
           </header>
 
+          <div className="adetail-analysis__tabs" role="tablist">
+            {([
+              ['all',   '전체', reportItems.files.length + reportItems.emails.length],
+              ['file',  '파일', reportItems.files.length],
+              ['email', '메일', reportItems.emails.length],
+            ] as [ListTab, string, number][]).map(([key, label, count]) => (
+              <button
+                key={key}
+                role="tab"
+                type="button"
+                className={`adetail-analysis__tab${listTab === key ? ' adetail-analysis__tab--on' : ''}`}
+                onClick={() => setListTab(key)}
+              >
+                {label}
+                <span className="adetail-analysis__tab-count">{count}</span>
+              </button>
+            ))}
+          </div>
+
           {isLoading ? (
             <p className="adetail-analysis__state">의심 항목을 불러오는 중...</p>
           ) : isError ? (
@@ -108,61 +136,65 @@ export function AdminAnalysisWorkspace({ sessionId, entry }: Props) {
             <p className="adetail-analysis__state">표시할 의심 항목이 없습니다.</p>
           ) : (
             <div className="adetail-analysis__list">
-              <div className="adetail-analysis__section-title">
-                의심 파일 ({reportItems.files.length})
-              </div>
-              {reportItems.files.map((file) => (
+              {(listTab === 'all' || listTab === 'file') && reportItems.files.map((file) => (
                 <button
                   key={file.file_id}
                   type="button"
-                  className="adetail-analysis__item"
+                  className="adetail-analysis__item adetail-analysis__item--file"
                   onClick={() => setSelectedFile(file)}
                 >
-                  <span className="adetail-analysis__item-top">
-                    <strong>{file.filename}</strong>
+                  <span className="adetail-analysis__item-icon" aria-hidden="true">
+                    {fileExt(file.filename)}
                   </span>
-                  <span className="adetail-analysis__item-meta">
-                    {sensitivityCategoryPlain(file.sensitivity_category)}
+                  <span className="adetail-analysis__item-body">
+                    <span className="adetail-analysis__item-top">
+                      <strong>{file.filename}</strong>
+                    </span>
+                    <span className="adetail-analysis__item-meta">
+                      {sensitivityCategoryPlain(file.sensitivity_category)}
+                    </span>
+                    <span className="adetail-analysis__item-desc">
+                      {file.matched_keywords.join(', ') || '매칭 키워드 없음'}
+                    </span>
+                    <span className="adetail-analysis__path">{file.relative_path}</span>
                   </span>
-                  <span className="adetail-analysis__item-desc">
-                    {file.matched_keywords.join(', ') || '매칭 키워드 없음'}
-                  </span>
-                  <span className="adetail-analysis__path">{file.relative_path}</span>
+                  <span className="adetail-analysis__item-chevron" aria-hidden="true">›</span>
                 </button>
               ))}
 
-              <div className="adetail-analysis__section-title adetail-analysis__section-title--gap">
-                의심 이메일 ({reportItems.emails.length})
-              </div>
-              {reportItems.emails.map((email) => {
+              {(listTab === 'all' || listTab === 'email') && reportItems.emails.map((email) => {
                 const tone = riskTone(email.risk_weight)
                 return (
                   <button
                     key={email.email_id}
                     type="button"
-                    className="adetail-analysis__item"
+                    className="adetail-analysis__item adetail-analysis__item--email"
                     onClick={() => setSelectedEmail(email)}
                   >
-                    <span className="adetail-analysis__item-top">
-                      <strong>{email.subject || '(제목 없음)'}</strong>
-                      {tone.mark && (
-                        <span
-                          className={`adetail-analysis__pill ${tone.cls}`}
-                          title={`risk_weight: ${email.risk_weight}`}
-                        >
-                          {tone.mark}
-                        </span>
-                      )}
+                    <span className="adetail-analysis__item-icon" aria-hidden="true">✉</span>
+                    <span className="adetail-analysis__item-body">
+                      <span className="adetail-analysis__item-top">
+                        <strong>{email.subject || '(제목 없음)'}</strong>
+                        {tone.mark && (
+                          <span
+                            className={`adetail-analysis__pill ${tone.cls}`}
+                            title={`risk_weight: ${email.risk_weight}`}
+                          >
+                            {tone.mark}
+                          </span>
+                        )}
+                      </span>
+                      <span className="adetail-analysis__item-meta">
+                        {channelLabel(email.channel_type)} · {formatDate(email.sent_at)}
+                      </span>
+                      <span className="adetail-analysis__item-desc">
+                        {email.sender} → {email.recipient}
+                      </span>
+                      <span className="adetail-analysis__path">
+                        {email.suspicion_reason}
+                      </span>
                     </span>
-                    <span className="adetail-analysis__item-meta">
-                      {channelLabel(email.channel_type)} · {formatDate(email.sent_at)}
-                    </span>
-                    <span className="adetail-analysis__item-desc">
-                      {email.sender} → {email.recipient}
-                    </span>
-                    <span className="adetail-analysis__path">
-                      {email.suspicion_reason}
-                    </span>
+                    <span className="adetail-analysis__item-chevron" aria-hidden="true">›</span>
                   </button>
                 )
               })}

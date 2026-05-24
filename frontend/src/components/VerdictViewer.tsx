@@ -94,13 +94,11 @@ function NarrativeBullets({ items }: { items: string[] }) {
 
 function StepSection({
   num,
-  emoji,
   title,
   children,
   final = false,
 }: {
   num: number
-  emoji: string
   title: string
   children: React.ReactNode
   final?: boolean
@@ -109,7 +107,6 @@ function StepSection({
     <section className={`vd__step${final ? ' vd__step--final' : ''}`}>
       <div className="vd__step-head">
         {num > 0 && <span className="vd__step-num">STEP {num}</span>}
-        <span className="vd__step-emoji">{emoji}</span>
         <h3 className="vd__step-title">{title}</h3>
       </div>
       <div className="vd__step-body">{children}</div>
@@ -300,37 +297,37 @@ function ExfiltrationReportView({
 
       <p className="vd__summary">{report.summary}</p>
 
-      <StepSection num={1} emoji="📋" title="기준선 수립">
+      <StepSection num={1} title="기준선 수립">
         {narrative?.step1?.length
           ? <NarrativeBullets items={narrative.step1} />
           : <Step1 subject={report.subject} />}
       </StepSection>
 
-      <StepSection num={2} emoji="📤" title="유출 채널 탐지">
+      <StepSection num={2} title="유출 채널 탐지">
         {narrative?.step2?.length
           ? <NarrativeBullets items={narrative.step2} />
           : <Step2 emails={report.suspicious_emails} />}
       </StepSection>
 
-      <StepSection num={3} emoji="📁" title="민감 파일 분류">
+      <StepSection num={3} title="민감 파일 분류">
         {narrative?.step3?.length
           ? <NarrativeBullets items={narrative.step3} />
           : <Step3 files={report.suspicious_files} />}
       </StepSection>
 
-      <StepSection num={4} emoji="🕒" title="행동 패턴 분석">
+      <StepSection num={4} title="행동 패턴 분석">
         {narrative?.step4?.length
           ? <NarrativeBullets items={narrative.step4} />
           : <Step4 behavior={report.behavior_summary} />}
       </StepSection>
 
-      <StepSection num={5} emoji="⚖️" title="반증 검증">
+      <StepSection num={5} title="반증 검증">
         {narrative?.step5?.length
           ? <NarrativeBullets items={narrative.step5} />
           : <Step5 breakdown={report.risk_breakdown} />}
       </StepSection>
 
-      <StepSection num={0} emoji="🏁" title="최종 판정" final>
+      <StepSection num={0} title="최종 판정" final>
         {narrative?.final?.length
           ? <NarrativeBullets items={narrative.final} />
           : <FinalSection

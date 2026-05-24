@@ -116,7 +116,7 @@ export function AdminDashboard({ adminName, onOpenSession, onLogout }: Props) {
   return (
     <div className="adash">
       <header className="adash__hdr">
-        <div className="adash__brand">HYENA 정기 점검 관리자 콘솔</div>
+        <div className="adash__brand">AUTH 정기 점검 관리</div>
         <div className="adash__user">관리자: {adminName}</div>
         <button
           className="adash__refresh"
@@ -133,6 +133,7 @@ export function AdminDashboard({ adminName, onOpenSession, onLogout }: Props) {
 
       <main className="adash__body">
         <section className="adash__summary" aria-label="제출 현황">
+          <p className="adash__summary-title">제출 현황</p>
           <div className="adash__metric">
             <span className="adash__metric-label">전체 제출</span>
             <strong className="adash__metric-value">{inbox.length}</strong>
@@ -151,47 +152,48 @@ export function AdminDashboard({ adminName, onOpenSession, onLogout }: Props) {
           </div>
         </section>
 
-        <div className="adash__tools">
-          <label className="adash__search">
-            <span className="adash__search-icon" aria-hidden="true">⌕</span>
-            <input
-              className="adash__search-input"
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="사원 이름, 사번, 직급 검색"
-              aria-label="관리자 목록 검색"
-            />
-          </label>
+        <div className="adash__main">
+          <div className="adash__tools">
+            <label className="adash__search">
+              <span className="adash__search-icon" aria-hidden="true">⌕</span>
+              <input
+                className="adash__search-input"
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="사원 이름, 사번, 직급 검색"
+                aria-label="관리자 목록 검색"
+              />
+            </label>
 
-          <div className="adash__filters" role="tablist" aria-label="상태 필터">
-            {FILTERS.map((item) => (
-              <button
-                key={item.key}
-                className={`adash__filter${filter === item.key ? ' adash__filter--active' : ''}`}
-                type="button"
-                onClick={() => setFilter(item.key)}
-              >
-                {item.label}
-              </button>
-            ))}
+            <div className="adash__filters" role="tablist" aria-label="상태 필터">
+              {FILTERS.map((item) => (
+                <button
+                  key={item.key}
+                  className={`adash__filter${filter === item.key ? ' adash__filter--active' : ''}`}
+                  type="button"
+                  onClick={() => setFilter(item.key)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="adash__filters" role="tablist" aria-label="소명 필요 여부 필터">
+              {EXPLANATION_FILTERS.map((item) => (
+                <button
+                  key={item.key}
+                  className={`adash__filter${explanationFilter === item.key ? ' adash__filter--active' : ''}`}
+                  type="button"
+                  onClick={() => setExplanationFilter(item.key)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="adash__filters" role="tablist" aria-label="소명 필요 여부 필터">
-            {EXPLANATION_FILTERS.map((item) => (
-              <button
-                key={item.key}
-                className={`adash__filter${explanationFilter === item.key ? ' adash__filter--active' : ''}`}
-                type="button"
-                onClick={() => setExplanationFilter(item.key)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <section className="adash__panel">
+          <section className="adash__panel">
           {isLoading ? (
             <p className="adash__state">제출 목록을 불러오는 중...</p>
           ) : error ? (
@@ -256,6 +258,7 @@ export function AdminDashboard({ adminName, onOpenSession, onLogout }: Props) {
             </table>
           )}
         </section>
+        </div>
       </main>
     </div>
   )
