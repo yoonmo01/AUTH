@@ -27,8 +27,8 @@ type Props = {
 type BadgeKind = 'explain' | 'ok'
 
 const BADGE_LABELS: Record<BadgeKind, { label: string; cls: string }> = {
-  explain: { label: '📝 설명이 필요해요', cls: 'erpt__badge--explain' },
-  ok: { label: '✅ 확인 완료만 해주세요', cls: 'erpt__badge--ok' },
+  explain: { label: '설명이 필요해요', cls: 'erpt__badge--explain' },
+  ok:      { label: '확인 완료만 해주세요', cls: 'erpt__badge--ok' },
 }
 
 function badgeKindFor(verdict: string): BadgeKind {
@@ -38,7 +38,6 @@ function badgeKindFor(verdict: string): BadgeKind {
 
 type ReportItem = {
   id: string
-  icon: string
   what: string
   whyCheck: string
   detail: string
@@ -72,7 +71,6 @@ function findingsFromReport(reportJson: unknown): {
 
   const emailItems: ReportItem[] = report.suspicious_emails.map((email) => ({
     id: email.email_id || `${email.channel_type}-${email.sent_at}-${email.recipient}`,
-    icon: '📧',
     what: email.subject
       ? `'${email.subject}' 메일이 외부로 발송된 기록이 있어요`
       : `외부로 발송된 메일 기록이 있어요`,
@@ -83,7 +81,6 @@ function findingsFromReport(reportJson: unknown): {
 
   const fileItems: ReportItem[] = report.suspicious_files.slice(0, 5).map((file) => ({
     id: file.file_id || file.relative_path,
-    icon: '📄',
     what: `${sensitivityCategoryPlain(file.sensitivity_category)} 파일이 다뤄진 기록이 있어요`,
     whyCheck: whyCheckForFile(file),
     detail: `파일 이름: ${file.filename} · 위치: ${pathReadable(file.relative_path)}`,
@@ -101,7 +98,6 @@ function findingsFromTable(findings: Finding[]): ReportItem[] {
     .filter((f) => f.severity === 'HIGH' || f.severity === 'MEDIUM' || f.severity === 'LOW')
     .map((f) => ({
       id: f.id,
-      icon: '🔍',
       what: f.title,
       whyCheck: f.description ?? '확인이 필요한 활동으로 분류된 항목이에요',
       detail: f.agent_name ? `담당 점검: ${f.agent_name}` : '',
@@ -196,11 +192,12 @@ export function EmployeeReport({
       </div>
 
       <div className="erpt__guide">
-        <p className="erpt__guide-title">📌 안내</p>
         <ul className="erpt__guide-list">
-          <li>이 보고서는 정기 점검에서 자동으로 살펴본 내용입니다. '문제'가 아니라 '확인이 필요한' 활동이에요.</li>
-          <li>각 항목의 <strong>'내용 보기'</strong> 버튼을 눌러 어떤 자료인지 직접 확인할 수 있어요.</li>
-          <li>확인 후, 옮기신 이유나 업무상 사정을 아래 <strong>입력란에 한 번에</strong> 적어주세요. (항목 번호를 같이 적어주시면 좋아요)</li>
+          <li>정기 점검에서 자동으로 확인된 활동 목록입니다.</li>
+          <li>각 항목은 문제가 아닌, <strong>확인이 필요한</strong> 활동입니다.</li>
+          <li>'내용 보기' 버튼으로 해당 자료를 직접 확인할 수 있습니다.</li>
+          <li>아래 입력란에 각 항목에 대한 설명을 작성해주세요.</li>
+          <li>항목 번호를 함께 적으시면 검토에 도움이 됩니다.</li>
         </ul>
       </div>
 
@@ -213,19 +210,13 @@ export function EmployeeReport({
             <div key={f.id} className="erpt__item">
               <p className="erpt__item-title">
                 <span className="erpt__item-num">{i + 1}.</span>
-                <span className="erpt__item-icon">{f.icon}</span>
                 {f.what}
               </p>
 
-              <div className="erpt__item-block">
-                <p className="erpt__item-block-label">무엇이 발견됐나요?</p>
-                <p className="erpt__item-block-text">{f.detail}</p>
-              </div>
-
-              <div className="erpt__item-block">
-                <p className="erpt__item-block-label">왜 확인이 필요한가요?</p>
-                <p className="erpt__item-block-text">{f.whyCheck}</p>
-              </div>
+              <ul className="erpt__item-facts">
+                {f.detail && <li>{f.detail}</li>}
+                <li>{f.whyCheck}</li>
+              </ul>
 
               {f.view?.kind === 'file' && (
                 <div className="erpt__item-actions">
@@ -234,7 +225,7 @@ export function EmployeeReport({
                     className="erpt__view-btn"
                     onClick={() => setViewingFile(f.view!.data as SuspiciousFile)}
                   >
-                    📂 파일 내용 보기
+                    파일 내용 보기
                   </button>
                 </div>
               )}
@@ -245,7 +236,7 @@ export function EmployeeReport({
                     className="erpt__view-btn"
                     onClick={() => setViewingEmail(f.view!.data as SuspiciousEmail)}
                   >
-                    ✉️ 메일 내용 보기
+                    메일 내용 보기
                   </button>
                 </div>
               )}
@@ -256,16 +247,17 @@ export function EmployeeReport({
 
       {!readOnly && explanationRequired && (
         <div className="erpt__explain">
-          <label className="erpt__explain-label">
-            위 항목에 대한 설명을 입력해주세요
-            <small>(예: "1번은 거래처 A사와 정기적으로 공유하는 보고서입니다. 2번은 …")</small>
-          </label>
+          <p className="erpt__explain-title">소명 작성</p>
+          <p className="erpt__explain-desc">
+            위 항목 중 해당되는 내용에 대해 업무상 사정이나 이유를 작성해주세요.
+            항목 번호를 함께 적어주시면 검토에 도움이 됩니다.
+          </p>
           <textarea
             className="erpt__explain-area"
-            rows={6}
+            rows={8}
             value={explanationInput}
             onChange={(e) => setExplanationInput(e.target.value)}
-            placeholder="각 항목에 대해 편하게 설명해주세요. 항목 번호를 같이 적어주시면 검토에 도움이 됩니다."
+            placeholder="예) 1번은 거래처 A사와 정기적으로 공유하는 보고서입니다. 2번은 …"
           />
           {submitError && <p className="erpt__err">{submitError}</p>}
           <button
@@ -280,9 +272,8 @@ export function EmployeeReport({
 
       {!readOnly && !explanationRequired && (
         <div className="erpt__explain erpt__explain--skip">
-          <p className="erpt__skip-title">추가로 설명해주실 항목이 없습니다.</p>
-          <p className="erpt__skip-text">
-            아래 '확인 완료' 버튼을 눌러 점검을 마무리해주세요.
+          <p className="erpt__explain-desc">
+            확인이 필요한 추가 항목이 없습니다. 아래 버튼을 눌러 점검을 마무리해주세요.
           </p>
           {submitError && <p className="erpt__err">{submitError}</p>}
           <button
@@ -296,8 +287,8 @@ export function EmployeeReport({
       )}
 
       {readOnly && explanationText && (
-        <div className="erpt__explain-readonly">
-          <h4 className="erpt__explain-label">직원 소명</h4>
+        <div className="erpt__explain">
+          <p className="erpt__explain-title">직원 소명</p>
           <p className="erpt__explain-text">{explanationText}</p>
         </div>
       )}

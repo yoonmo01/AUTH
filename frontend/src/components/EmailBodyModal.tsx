@@ -93,7 +93,7 @@ export function EmailBodyModal({ email, onClose, suspicionReason }: Props) {
             <div className="table__msg">불러오는 중…</div>
           ) : (
             <pre className="em__body">
-              {data?.body_text ?? email.body_preview ?? '(본문 없음)'}
+              {(data?.body_text ?? email.body_preview ?? '(본문 없음)').replace(/\n{3,}/g, '\n\n')}
             </pre>
           )}
         </div>

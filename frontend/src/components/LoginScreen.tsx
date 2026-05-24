@@ -73,7 +73,7 @@ export function LoginScreen({ onLoginEmployee, onLoginAdmin }: Props) {
     <div className="login">
       <div className="login__panel">
         <div className="login__brand">
-          <span className="login__brand-name">◆ HYENA</span>
+          <span className="login__brand-name">◆ AUTH</span>
           &nbsp;&nbsp;AUDIT MANAGEMENT SYSTEM
         </div>
         <h1 className="login__title">정기 점검 시스템</h1>
