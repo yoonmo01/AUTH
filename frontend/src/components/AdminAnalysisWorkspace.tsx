@@ -1,10 +1,9 @@
-import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { fetchSession, type InboxEntry } from '../api/client'
+import { useEffect, useMemo, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { fetchSession, fetchAdminNarrative, type InboxEntry } from '../api/client'
 import { classifyReport } from '../report'
 import {
   channelLabel,
-  channelPlain,
   emailRecordFromSuspicious,
   fileRecordFromSuspicious,
   sensitivityCategoryPlain,
@@ -50,186 +49,11 @@ function ExplanationPanel({ text }: { text: string | null }) {
   )
 }
 
-function extractKeyChecks(report: ExfiltrationReport): string[] {
-  const checks: string[] = []
-
-  const topEmail = [...report.suspicious_emails].sort((a, b) => b.risk_weight - a.risk_weight)[0]
-  if (topEmail) {
-    checks.push(
-      `외부 메일(${channelPlain(topEmail.channel_type)})로 발송된 메일 ${report.suspicious_emails.length}건`,
-    )
-  }
-
-  const outOfHours = report.behavior_summary.out_of_hours_activity?.length ?? 0
-  if (outOfHours > 0) checks.push(`업무 외 시간에 발생한 활동 ${outOfHours}건`)
-
-  const deleted = report.behavior_summary.deleted_files?.length ?? 0
-  if (deleted > 0) checks.push(`퇴사 직전 삭제된 파일 ${deleted}건`)
-
-  if (checks.length < 3) {
-    const topFile = [...report.suspicious_files].sort(
-      (a, b) => b.sensitivity_score - a.sensitivity_score,
-    )[0]
-    if (topFile) {
-      checks.push(`${sensitivityCategoryPlain(topFile.sensitivity_category)} 파일 (예: ${topFile.filename})`)
-    }
-  }
-
-  return checks.slice(0, 3)
-}
-
-function StepCard({
-  num,
-  emoji,
-  title,
-  hint,
-  children,
-}: {
-  num: 2 | 3 | 4 | 5
-  emoji: string
-  title: string
-  hint: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="adetail-summary__card">
-      <div className="adetail-summary__card-head">
-        <span className="adetail-summary__card-num">{emoji}</span>
-        <div className="adetail-summary__card-titles">
-          <p className="adetail-summary__card-title">{title}</p>
-          <p className="adetail-summary__card-hint">{hint}</p>
-        </div>
-        <span className="adetail-summary__card-tag">STEP {num}</span>
-      </div>
-      <div className="adetail-summary__card-body">{children}</div>
-    </div>
-  )
-}
-
-function AgentSummaryHeader({ report }: { report: ExfiltrationReport | null }) {
-  if (!report) {
-    return (
-      <section className="adetail-summary" aria-label="에이전트 분석 요약">
-        <p className="adetail-summary__empty">분석 요약이 아직 준비되지 않았습니다.</p>
-      </section>
-    )
-  }
-
-  const keyChecks = extractKeyChecks(report)
-  const counterEvidence = report.risk_breakdown.counter_evidence ?? 0
-  const counterText =
-    counterEvidence < 0
-      ? '단순 업무로 보기 어려운 정황이 더 많아요'
-      : '반증 근거가 발견되지 않았어요'
-
-  const topEmails = [...report.suspicious_emails]
-    .sort((a, b) => b.risk_weight - a.risk_weight)
-    .slice(0, 2)
-  const fileGroups = groupBy(report.suspicious_files, (f) => f.sensitivity_category).slice(0, 3)
-  const outOfHours = report.behavior_summary.out_of_hours_activity?.length ?? 0
-  const deleted = report.behavior_summary.deleted_files?.length ?? 0
-
-  return (
-    <section className="adetail-summary" aria-label="에이전트 분석 요약">
-      <div className="adetail-summary__focus">
-        <h3 className="adetail-summary__focus-title">🎯 중점 확인 항목</h3>
-        {keyChecks.length === 0 ? (
-          <p className="adetail-summary__empty">중점 확인 항목이 없습니다.</p>
-        ) : (
-          <ol className="adetail-summary__focus-list">
-            {keyChecks.map((c, i) => (
-              <li key={i}>{c}</li>
-            ))}
-          </ol>
-        )}
-      </div>
-
-      <div className="adetail-summary__grid">
-        <StepCard
-          num={2}
-          emoji="📤"
-          title="어디로 자료가 나갔는지"
-          hint={`외부 발신 ${report.suspicious_emails.length}건`}
-        >
-          {topEmails.length === 0 ? (
-            <p className="adetail-summary__muted">의심 발신 기록 없음</p>
-          ) : (
-            <ul className="adetail-summary__list">
-              {topEmails.map((e) => (
-                <li key={e.email_id}>
-                  <strong>{formatDate(e.sent_at)}</strong> · {channelPlain(e.channel_type)} →{' '}
-                  {e.recipient}
-                </li>
-              ))}
-              {report.suspicious_emails.length > topEmails.length && (
-                <li className="adetail-summary__muted">
-                  외 {report.suspicious_emails.length - topEmails.length}건 더 있음
-                </li>
-              )}
-            </ul>
-          )}
-        </StepCard>
-
-        <StepCard
-          num={3}
-          emoji="📁"
-          title="어떤 자료가 다뤄졌는지"
-          hint={`민감 파일 ${report.suspicious_files.length}건`}
-        >
-          {fileGroups.length === 0 ? (
-            <p className="adetail-summary__muted">의심 파일 없음</p>
-          ) : (
-            <ul className="adetail-summary__list">
-              {fileGroups.map(([cat, files]) => (
-                <li key={cat}>
-                  <strong>{sensitivityCategoryPlain(cat)}</strong>: {files.length}건
-                </li>
-              ))}
-            </ul>
-          )}
-        </StepCard>
-
-        <StepCard
-          num={4}
-          emoji="🕒"
-          title="평소와 다른 행동"
-          hint={`업무 외 ${outOfHours}건 · 삭제 ${deleted}건`}
-        >
-          {report.behavior_summary.notes ? (
-            <p className="adetail-summary__notes">{report.behavior_summary.notes}</p>
-          ) : (
-            <p className="adetail-summary__muted">특이 행동 기록 없음</p>
-          )}
-        </StepCard>
-
-        <StepCard
-          num={5}
-          emoji="⚖️"
-          title="다른 해석 가능성"
-          hint={counterEvidence < 0 ? '반증 일부 인정' : '반증 없음'}
-        >
-          <p className="adetail-summary__notes">{counterText}</p>
-        </StepCard>
-      </div>
-    </section>
-  )
-}
-
-function groupBy<T>(arr: T[], keyFn: (item: T) => string): [string, T[]][] {
-  const map = new Map<string, T[]>()
-  for (const item of arr) {
-    const k = keyFn(item) || '(기타)'
-    const list = map.get(k) ?? []
-    list.push(item)
-    map.set(k, list)
-  }
-  return [...map.entries()]
-}
-
 export function AdminAnalysisWorkspace({ sessionId, entry }: Props) {
   const [contentTab, setContentTab] = useState(0)
   const [selectedFile, setSelectedFile] = useState<SuspiciousFile | null>(null)
   const [selectedEmail, setSelectedEmail] = useState<SuspiciousEmail | null>(null)
+  const queryClient = useQueryClient()
 
   const { data: session, isLoading, isError } = useQuery<Session>({
     queryKey: ['session', sessionId],
@@ -241,6 +65,17 @@ export function AdminAnalysisWorkspace({ sessionId, entry }: Props) {
     const classified = classifyReport(session.report_json)
     return classified.kind === 'exfiltration' ? classified.report : null
   }, [session])
+
+  // 상세분석 화면이 열리는 즉시 narrative를 백그라운드 prefetch —
+  // "분석 결과" 탭을 클릭하기 전에 캐시를 채워두기 위함.
+  useEffect(() => {
+    if (!exfilReport) return
+    queryClient.prefetchQuery({
+      queryKey: ['admin-narrative', sessionId],
+      queryFn: () => fetchAdminNarrative(sessionId),
+      staleTime: Infinity,
+    })
+  }, [exfilReport, sessionId, queryClient])
 
   const reportItems = useMemo(() => {
     if (!exfilReport) return { files: [] as SuspiciousFile[], emails: [] as SuspiciousEmail[] }
@@ -336,16 +171,13 @@ export function AdminAnalysisWorkspace({ sessionId, entry }: Props) {
         </section>
       </aside>
 
-      <section className="adetail-analysis__panel adetail-analysis__right" aria-label="상세 판정">
-        <AgentSummaryHeader report={exfilReport} />
-        <div className="adetail-analysis__right-content">
-          <ContentViewer
-            selectedSessionId={sessionId}
-            tab={contentTab}
-            onTab={setContentTab}
-            layout="expanded"
-          />
-        </div>
+      <section className="adetail-analysis__panel adetail-analysis__right" aria-label="상세 분석">
+        <ContentViewer
+          selectedSessionId={sessionId}
+          tab={contentTab}
+          onTab={setContentTab}
+          layout="expanded"
+        />
       </section>
 
       {selectedFile && (

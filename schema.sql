@@ -535,6 +535,8 @@ CREATE TABLE investigation_sessions (
     completed_at        TIMESTAMPTZ,
     report_storage_uri  TEXT,
     report_json         JSONB,
+    agent_trace         JSONB,
+    admin_narrative     JSONB,
     employee_id         VARCHAR(20) REFERENCES employees(employee_id),
     quarter             TEXT
 );
