@@ -48,7 +48,8 @@ def list_sessions(limit: int = Query(20, le=100)):
 def get_session(session_id: str):
     require_uuid(session_id, "session_id")
     rows = query(
-        f"SELECT id,query_text,query_intent,status,started_at,completed_at,report_json, "
+        f"SELECT id,query_text,query_intent,status,started_at,completed_at,"
+        f"report_json, agent_trace, "
         f"report_json->>'verdict' AS verdict, "
         f"(report_json->>'risk_score')::int AS risk_score "
         f"FROM investigation_sessions WHERE id='{session_id}';"
@@ -62,6 +63,11 @@ def get_session(session_id: str):
             row["report_json"] = json.loads(row["report_json"])
         except (json.JSONDecodeError, TypeError):
             row["report_json"] = None
+    if isinstance(row.get("agent_trace"), str):
+        try:
+            row["agent_trace"] = json.loads(row["agent_trace"])
+        except (json.JSONDecodeError, TypeError):
+            row["agent_trace"] = None
     if row.get("verdict") is None and isinstance(row.get("report_json"), dict):
         report = row["report_json"]
         if isinstance(report.get("final_report"), dict):

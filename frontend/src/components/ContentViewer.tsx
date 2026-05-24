@@ -10,7 +10,7 @@ import type { ConsoleLayout } from '../consoleLayout'
 
 // Console tab panel — 판정 / 네트워크 / 타임라인. File body is no longer a
 // tab; it opens as a popup from the file list (콘솔 개편 S4).
-const TABS = ['판정', '네트워크', '타임라인'] as const
+const TABS = ['분석 결과', '네트워크', '타임라인'] as const
 
 type Props = {
   selectedSessionId: string | null

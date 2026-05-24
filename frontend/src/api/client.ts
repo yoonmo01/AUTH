@@ -1,7 +1,7 @@
 import type {
   Summary, FileRecord, EmailRecord, EntityRecord,
   GraphNode, GraphEdge, ActivityEvent, FileContent,
-  Finding, Case, Session,
+  Finding, Case, Session, AdminNarrative,
 } from '../types'
 import { resolveFixture } from '../fixtures'
 import { resolveApiBase } from './apiBase'
@@ -264,4 +264,10 @@ export const markReviewed = (sessionId: string): Promise<{ ok: boolean }> =>
   fetch(`${BASE}/admin/inbox/${sessionId}/review`, { method: 'PATCH' }).then((res) => {
     if (!res.ok) throw new Error(`검토 처리 실패 (${res.status})`)
     return res.json()
+  })
+
+export const fetchAdminNarrative = (sessionId: string): Promise<AdminNarrative> =>
+  fetch(`${BASE}/admin/sessions/${sessionId}/narrative`).then((res) => {
+    if (!res.ok) throw new Error(`narrative 조회 실패 (${res.status})`)
+    return res.json() as Promise<AdminNarrative>
   })

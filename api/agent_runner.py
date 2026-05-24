@@ -86,10 +86,23 @@ def _run_agent_thread(session_id: str, body: AgentRunRequest) -> None:
         verdict = result.get("verdict", "UNKNOWN")
         risk_score = result.get("risk_score", 0)
 
+        agent_trace = {
+            "baseline_profile":   result.get("baseline_profile", {}),
+            "behavior_anomalies": result.get("behavior_anomalies", {}),
+            "verified_findings":  result.get("verified_findings", []),
+            "cross_reference":    result.get("cross_reference", []),
+            "supervisor_context": result.get("supervisor_context", {}),
+            "analysis_start":     initial_state["analysis_start"],
+            "subject_name":       initial_state["subject_name"],
+            "subject_position":   initial_state["subject_position"],
+        }
+
         report_sql = esc(json.dumps(final_report, ensure_ascii=False))
+        trace_sql  = esc(json.dumps(agent_trace, ensure_ascii=False))
         execute(
             f"UPDATE investigation_sessions "
-            f"SET status='completed', completed_at=NOW(), report_json={report_sql} "
+            f"SET status='completed', completed_at=NOW(), "
+            f"    report_json={report_sql}, agent_trace={trace_sql} "
             f"WHERE id='{session_id}';"
         )
 

@@ -1,11 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchSession } from '../api/client'
+import { fetchSession, fetchAdminNarrative } from '../api/client'
 import { classifyReport } from '../report'
-import { channelLabel, nodeTypeLabel, relationLabel } from '../reportLabels'
-import { formatDate, formatSize } from '../format'
+import { channelLabel, sensitivityCategoryPlain } from '../reportLabels'
+import { formatDate } from '../format'
 import { buildDownloadFilename } from '../downloadFilename'
 import { VerdictBadge } from './VerdictBadge'
-import { ExpandableRow } from './ExpandableRow'
 import type { ConsoleLayout } from '../consoleLayout'
 import type {
   Session,
@@ -13,22 +12,12 @@ import type {
   CleanReport,
   ReportSubject,
   RiskBreakdown,
+  SuspiciousEmail,
+  SuspiciousFile,
   BehaviorSummary,
-  ReportTimelineEntry,
+  AdminNarrative,
 } from '../types'
 
-const RISK_LABELS: { key: keyof RiskBreakdown; label: string }[] = [
-  { key: 'cross_ref', label: '교차 매칭' },
-  { key: 'deleted_files', label: '파일 삭제' },
-  { key: 'anon_channel', label: '익명 채널' },
-  { key: 'anomaly', label: '행동 이상' },
-  { key: 'counter_evidence', label: '반증 감점' },
-]
-
-// Print the verdict report to PDF. The print-only stylesheet (App.css)
-// hides the console chrome; document.title is swapped so the print dialog's
-// default "save as PDF" filename matches the report.
-// Exported so the action button can live in ContentViewer's tab bar.
 export function printVerdictReport(subjectName: string, verdict: string) {
   const filename = buildDownloadFilename({
     kind: 'verdict-report',
@@ -47,181 +36,88 @@ export function printVerdictReport(subjectName: string, verdict: string) {
   window.print()
 }
 
-function RiskBreakdownSection({ breakdown }: { breakdown: RiskBreakdown }) {
-  const rows = RISK_LABELS.filter((r) => typeof breakdown[r.key] === 'number')
-  return (
-    <section className="vd__section">
-      <h3 className="vd__h">점수 구성</h3>
-      {rows.length === 0 ? (
-        <div className="table__msg">점수 구성 내역 없음</div>
-      ) : (
-        <ul className="vd__risk">
-          {rows.map((r) => {
-            const value = breakdown[r.key] as number
-            const penalty = value < 0
-            return (
-              <li key={r.key} className="vd__risk-row">
-                <span className="vd__risk-label">{r.label}</span>
-                <span
-                  className={`vd__risk-val vd__risk-val--${penalty ? 'penalty' : 'gain'}`}
-                >
-                  {penalty ? value : `+${value}`}
-                </span>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-    </section>
-  )
+// ── helpers ─────────────────────────────────────────────────────────────────
+
+function calcMonths(start: string, end: string): number {
+  const a = new Date(start)
+  const b = new Date(end)
+  if (isNaN(a.getTime()) || isNaN(b.getTime())) return 0
+  return Math.max(0, Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24 * 30.44)))
 }
 
-function BehaviorSection({ behavior, layout }: { behavior: BehaviorSummary; layout: ConsoleLayout }) {
-  const { highlight_dates, deleted_files, out_of_hours_activity, notes, overview, key_behaviors } = behavior
-  const tableMode = layout === 'focused' ? 'table--wrap' : 'table--fixed'
-  const useRow = layout === 'expanded'
+function channelCounts(emails: SuspiciousEmail[]): string {
+  const map = new Map<string, number>()
+  for (const e of emails) map.set(e.channel_type, (map.get(e.channel_type) ?? 0) + 1)
+  return [...map.entries()].map(([ch, n]) => `${channelLabel(ch)} ${n}건`).join(', ')
+}
 
-  // Agent report format: overview + key_behaviors
-  if (overview || (key_behaviors && key_behaviors.length > 0)) {
-    return (
-      <section className="vd__section">
-        <h3 className="vd__h">행동 이상</h3>
-        {overview && <p className="vd__notes">{overview}</p>}
-        {key_behaviors && key_behaviors.length > 0 && (
-          <ul className="vd__behaviors">
-            {key_behaviors.map((b, i) => (
-              <li key={i} className="vd__behavior">{b}</li>
-            ))}
-          </ul>
-        )}
-      </section>
-    )
+function catCounts(files: SuspiciousFile[]): [string, number][] {
+  const map = new Map<string, number>()
+  for (const f of files) {
+    const cat = f.sensitivity_category || '기타'
+    map.set(cat, (map.get(cat) ?? 0) + 1)
   }
+  return [...map.entries()]
+}
 
-  // Legacy format
-  const empty =
-    highlight_dates.length === 0 &&
-    deleted_files.length === 0 &&
-    out_of_hours_activity.length === 0 &&
-    !notes
+const BREAKDOWN_LABEL: Record<string, string> = {
+  cross_ref: '교차 대조',
+  deleted_files: '파일 삭제',
+  anon_channel: '익명 채널',
+  anomaly: '행동 이상',
+  counter_evidence: '반증',
+}
+
+function breakdownSentence(bd: RiskBreakdown): string {
+  const parts = (Object.entries(bd) as [string, number | undefined][])
+    .filter(([, v]) => typeof v === 'number' && v !== 0)
+    .map(([k, v]) => {
+      const label = BREAKDOWN_LABEL[k] ?? k
+      return (v as number) >= 0 ? `${label} +${v}` : `${label} ${v}`
+    })
+  return parts.join(', ')
+}
+
+// ── NarrativeBullets ─────────────────────────────────────────────────────────
+
+function NarrativeBullets({ items }: { items: string[] }) {
   return (
-    <section className="vd__section">
-      <h3 className="vd__h">행동 이상</h3>
-      {empty ? (
-        <div className="table__msg">행동 이상 내역 없음</div>
-      ) : (
-        <>
-          {highlight_dates.length > 0 && (
-            <div className="vd__dates">
-              {highlight_dates.map((d) => (
-                <span key={d} className="vd__date">{d}</span>
-              ))}
-            </div>
-          )}
-          {deleted_files.length > 0 && (
-            <table className={`table ${tableMode}`}>
-              <colgroup>
-                <col style={{ width: useRow ? '26%' : '28%' }} />
-                <col style={{ width: useRow ? '18%' : '20%' }} />
-                <col style={{ width: useRow ? '11%' : '12%' }} />
-                <col style={{ width: useRow ? '40%' : '40%' }} />
-                {useRow && <col style={{ width: '5%' }} />}
-              </colgroup>
-              <thead>
-                <tr>
-                  <th>삭제 파일</th>
-                  <th>삭제 시각</th>
-                  <th>크기</th>
-                  <th>사유</th>
-                  {useRow && <th aria-label="펼치기" />}
-                </tr>
-              </thead>
-              <tbody>
-                {deleted_files.map((f, i) =>
-                  useRow ? (
-                    <ExpandableRow key={i}>
-                      <td className="table__name">{f.original_filename}</td>
-                      <td className="table__num">{formatDate(f.deleted_at)}</td>
-                      <td className="table__num">{formatSize(f.file_size_bytes)}</td>
-                      <td>{f.reason}</td>
-                    </ExpandableRow>
-                  ) : (
-                    <tr key={i}>
-                      <td className="table__name">{f.original_filename}</td>
-                      <td className="table__num">{formatDate(f.deleted_at)}</td>
-                      <td className="table__num">{formatSize(f.file_size_bytes)}</td>
-                      <td>{f.reason}</td>
-                    </tr>
-                  ),
-                )}
-              </tbody>
-            </table>
-          )}
-          {out_of_hours_activity.length > 0 && (
-            <table className={`table ${tableMode}`}>
-              <colgroup>
-                <col style={{ width: useRow ? '16%' : '18%' }} />
-                <col style={{ width: useRow ? '20%' : '22%' }} />
-                <col style={{ width: useRow ? '59%' : '60%' }} />
-                {useRow && <col style={{ width: '5%' }} />}
-              </colgroup>
-              <thead>
-                <tr>
-                  <th>업무 외 활동</th>
-                  <th>시각</th>
-                  <th>상세</th>
-                  {useRow && <th aria-label="펼치기" />}
-                </tr>
-              </thead>
-              <tbody>
-                {out_of_hours_activity.map((a, i) =>
-                  useRow ? (
-                    <ExpandableRow key={i}>
-                      <td>{a.event_type}</td>
-                      <td className="table__num">{formatDate(a.event_at)}</td>
-                      <td>{a.detail}</td>
-                    </ExpandableRow>
-                  ) : (
-                    <tr key={i}>
-                      <td>{a.event_type}</td>
-                      <td className="table__num">{formatDate(a.event_at)}</td>
-                      <td>{a.detail}</td>
-                    </tr>
-                  ),
-                )}
-              </tbody>
-            </table>
-          )}
-          {notes && <p className="vd__notes">{notes}</p>}
-        </>
-      )}
+    <ul className="vd__bullets">
+      {items.map((item, i) => (
+        <li key={i} className="vd__bullet">{item}</li>
+      ))}
+    </ul>
+  )
+}
+
+// ── StepSection ──────────────────────────────────────────────────────────────
+
+function StepSection({
+  num,
+  emoji,
+  title,
+  children,
+  final = false,
+}: {
+  num: number
+  emoji: string
+  title: string
+  children: React.ReactNode
+  final?: boolean
+}) {
+  return (
+    <section className={`vd__step${final ? ' vd__step--final' : ''}`}>
+      <div className="vd__step-head">
+        {num > 0 && <span className="vd__step-num">STEP {num}</span>}
+        <span className="vd__step-emoji">{emoji}</span>
+        <h3 className="vd__step-title">{title}</h3>
+      </div>
+      <div className="vd__step-body">{children}</div>
     </section>
   )
 }
 
-function TimelineSection({ timeline }: { timeline: ReportTimelineEntry[] }) {
-  return (
-    <section className="vd__section">
-      <h3 className="vd__h">타임라인</h3>
-      {timeline.length === 0 ? (
-        <div className="table__msg">타임라인 내역 없음</div>
-      ) : (
-        <ul className="vd__tl">
-          {timeline.map((entry) => (
-            <li key={entry.date} className="vd__tl-entry">
-              <span className="vd__tl-date">{entry.date}</span>
-              <ul className="vd__tl-events">
-                {entry.events.map((ev, i) => (
-                  <li key={i}>{ev}</li>
-                ))}
-              </ul>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  )
-}
+// ── SubjectLine ──────────────────────────────────────────────────────────────
 
 function SubjectLine({ subject }: { subject: ReportSubject }) {
   return (
@@ -235,194 +131,219 @@ function SubjectLine({ subject }: { subject: ReportSubject }) {
   )
 }
 
-function ExfiltrationReportView({ report, layout }: { report: ExfiltrationReport; layout: ConsoleLayout }) {
-  const { evidence_network: net } = report
-  const isFocused = layout === 'focused'
+// ── Step content builders ────────────────────────────────────────────────────
+
+function Step1({ subject }: { subject: ReportSubject }) {
+  const months = calcMonths(subject.hire_date, subject.resignation_date)
+  return (
+    <>
+      <p>
+        {subject.name}은(는) {subject.position}으로 {subject.hire_date}부터{' '}
+        {subject.resignation_date}까지 {months > 0 ? `${months}개월간 ` : ''}재직했습니다.
+      </p>
+      <p>분석은 퇴사 전 최근 90일 활동을 기준으로 기준선 행동 패턴을 수립했습니다.</p>
+    </>
+  )
+}
+
+function Step2({ emails }: { emails: SuspiciousEmail[] }) {
+  if (emails.length === 0) {
+    return <p>분석 기간 내 외부 발신 의심 이메일이 탐지되지 않았습니다.</p>
+  }
+  const counts = channelCounts(emails)
+  const attachCount = emails.filter((e) => e.has_attachment).length
+  const topRecipients = [...new Set(emails.map((e) => e.recipient))].slice(0, 3)
+  return (
+    <>
+      <p>
+        외부 채널로 발신된 의심 이메일 {emails.length}건이 탐지되었습니다.
+        {counts && ` (${counts})`}
+      </p>
+      {attachCount > 0 && (
+        <p>이 중 첨부 파일이 포함된 이메일은 {attachCount}건입니다.</p>
+      )}
+      {topRecipients.length > 0 && (
+        <p>주요 수신자: {topRecipients.join(', ')}</p>
+      )}
+    </>
+  )
+}
+
+function Step3({ files }: { files: SuspiciousFile[] }) {
+  if (files.length === 0) {
+    return <p>의심 민감 파일이 식별되지 않았습니다.</p>
+  }
+  const cats = catCounts(files)
+  const allKw = [...new Set(files.flatMap((f) => f.matched_keywords))].slice(0, 5)
+  return (
+    <>
+      <p>민감도 분류 대상 파일 {files.length}건이 식별되었습니다.</p>
+      {cats.length > 0 && (
+        <p>
+          {cats.map(([cat, n]) => `${sensitivityCategoryPlain(cat)} ${n}건`).join(', ')}
+          {cats.length > 0 ? ' 등이 포함됩니다.' : ''}
+        </p>
+      )}
+      {allKw.length > 0 && <p>주요 탐지 키워드: {allKw.join(', ')}</p>}
+    </>
+  )
+}
+
+function Step4({ behavior }: { behavior: BehaviorSummary }) {
+  const { overview, key_behaviors, deleted_files, out_of_hours_activity, notes } = behavior
+  if (overview || (key_behaviors && key_behaviors.length > 0)) {
+    return (
+      <>
+        {overview && <p>{overview}</p>}
+        {key_behaviors?.map((b, i) => (
+          <p key={i} className="vd__step-bullet">· {b}</p>
+        ))}
+      </>
+    )
+  }
+  const delCount = deleted_files?.length ?? 0
+  const oohCount = out_of_hours_activity?.length ?? 0
+  if (delCount === 0 && oohCount === 0 && !notes) {
+    return <p>특이한 행동 이상 패턴이 발견되지 않았습니다.</p>
+  }
+  return (
+    <>
+      {delCount > 0 && <p>퇴사 직전 삭제된 파일 {delCount}건이 탐지되었습니다.</p>}
+      {oohCount > 0 && <p>업무 외 시간 이상 활동 {oohCount}건이 탐지되었습니다.</p>}
+      {notes && <p>{notes}</p>}
+    </>
+  )
+}
+
+function Step5({ breakdown }: { breakdown: RiskBreakdown }) {
+  const ce = breakdown.counter_evidence ?? 0
+  if (ce < 0) {
+    const falseCount = Math.round(Math.abs(ce) / 20)
+    return (
+      <p>
+        반증 {falseCount}건이 확인되어 {Math.abs(ce)}점이 감점되었습니다.
+        일부 항목은 정상 업무 행위로 판단되어 위험 점수에서 제외되었습니다.
+      </p>
+    )
+  }
+  return (
+    <p>유의미한 반증 근거가 발견되지 않았습니다. 탐지된 의심 항목 전체가 유출 행위로 판단됩니다.</p>
+  )
+}
+
+function FinalSection({
+  verdict,
+  risk_score,
+  risk_breakdown,
+}: {
+  verdict: string
+  risk_score: number
+  risk_breakdown: RiskBreakdown
+}) {
+  const bdText = breakdownSentence(risk_breakdown)
+  return (
+    <>
+      <p>
+        위 분석을 종합한 리스크 스코어는 <strong>{risk_score}점</strong>으로,{' '}
+        <strong>{verdict}</strong> 판정을 내렸습니다.
+      </p>
+      {bdText && <p className="vd__step-muted">점수 구성: {bdText}</p>}
+    </>
+  )
+}
+
+// ── helpers ─────────────────────────────────────────────────────────────────
+
+function verdictColor(verdict: string): string {
+  if (verdict === 'HIGH')   return 'var(--sev-high)'
+  if (verdict === 'MEDIUM') return 'var(--sev-med)'
+  if (verdict === 'LOW')    return 'var(--sev-low)'
+  return 'var(--sev-clean)'
+}
+
+function verdictHeroClass(verdict: string): string {
+  if (verdict === 'HIGH')   return 'vd__hero--high'
+  if (verdict === 'MEDIUM') return 'vd__hero--med'
+  if (verdict === 'LOW')    return 'vd__hero--low'
+  return 'vd__hero--alert'
+}
+
+// ── ExfiltrationReportView ───────────────────────────────────────────────────
+
+function ExfiltrationReportView({
+  report,
+  narrative,
+}: {
+  report: ExfiltrationReport
+  narrative?: AdminNarrative
+}) {
+  const color = verdictColor(report.verdict)
   return (
     <div className="vd">
-      <header className="vd__hero vd__hero--alert">
+      <header className={`vd__hero ${verdictHeroClass(report.verdict)}`}>
         <div className="vd__verdict">
           <VerdictBadge verdict={report.verdict} />
           <SubjectLine subject={report.subject} />
         </div>
         <div className="vd__score">
-          <span className="vd__score-num">{report.risk_score}</span>
-          <span className="vd__score-label">RISK SCORE</span>
+          <span className="vd__score-grade" style={{ color }}>{report.verdict}</span>
+          <span className="vd__score-label">위험 등급</span>
         </div>
       </header>
 
+      {narrative?.review_guide && (
+        <section className="vd__review-guide">
+          <h3 className="vd__review-guide-title">검토 가이드</h3>
+          <p>{narrative.review_guide}</p>
+        </section>
+      )}
+
       <p className="vd__summary">{report.summary}</p>
 
-      <RiskBreakdownSection breakdown={report.risk_breakdown} />
+      <StepSection num={1} emoji="📋" title="기준선 수립">
+        {narrative?.step1?.length
+          ? <NarrativeBullets items={narrative.step1} />
+          : <Step1 subject={report.subject} />}
+      </StepSection>
 
-      <section className="vd__section">
-        <h3 className="vd__h">민감 파일 ({report.suspicious_files.length})</h3>
-        {report.suspicious_files.length === 0 ? (
-          <div className="table__msg">민감 파일 없음</div>
-        ) : isFocused ? (
-          <table className="table table--wrap">
-            <colgroup>
-              <col style={{ width: '30%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '20%' }} />
-              <col style={{ width: '25%' }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th>파일명</th>
-                <th>민감도</th>
-                <th>분류</th>
-                <th>매칭 키워드</th>
-                <th>경로</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.suspicious_files.map((f) => (
-                <tr key={f.file_id}>
-                  <td className="table__name">{f.filename}</td>
-                  <td className="table__num">{(f.sensitivity_score * 100).toFixed(0)}%</td>
-                  <td><span className="table__cat">{f.sensitivity_category}</span></td>
-                  <td className="table__path">{f.matched_keywords.join(', ') || '—'}</td>
-                  <td className="table__path">{f.relative_path}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <table className="table table--fixed">
-            <colgroup>
-              <col style={{ width: '40%' }} />
-              <col style={{ width: '20%' }} />
-              <col style={{ width: '35%' }} />
-              <col style={{ width: '5%' }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th>파일명</th>
-                <th>분류</th>
-                <th>매칭 키워드</th>
-                <th aria-label="펼치기" />
-              </tr>
-            </thead>
-            <tbody>
-              {report.suspicious_files.map((f) => (
-                <ExpandableRow key={f.file_id}>
-                  <td className="table__name">{f.filename}</td>
-                  <td><span className="table__cat">{f.sensitivity_category}</span></td>
-                  <td className="table__path">{f.matched_keywords.join(', ') || '—'}</td>
-                </ExpandableRow>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+      <StepSection num={2} emoji="📤" title="유출 채널 탐지">
+        {narrative?.step2?.length
+          ? <NarrativeBullets items={narrative.step2} />
+          : <Step2 emails={report.suspicious_emails} />}
+      </StepSection>
 
-      <section className="vd__section">
-        <h3 className="vd__h">의심 이메일 ({report.suspicious_emails.length})</h3>
-        {report.suspicious_emails.length === 0 ? (
-          <div className="table__msg">의심 이메일 없음</div>
-        ) : isFocused ? (
-          <table className="table table--wrap">
-            <colgroup>
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '20%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '6%' }} />
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '6%' }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th>채널</th>
-                <th>제목</th>
-                <th>발신자</th>
-                <th>수신자</th>
-                <th>발신시각</th>
-                <th>첨부</th>
-                <th>의심 사유</th>
-                <th>가중치</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.suspicious_emails.map((e) => (
-                <tr key={e.email_id}>
-                  <td><span className="table__cat">{channelLabel(e.channel_type)}</span></td>
-                  <td className="table__name">{e.subject}</td>
-                  <td className="table__path">{e.sender}</td>
-                  <td className="table__path">{e.recipient}</td>
-                  <td className="table__num">{formatDate(e.sent_at)}</td>
-                  <td>{e.has_attachment ? '있음' : '—'}</td>
-                  <td className="table__path">{e.suspicion_reason}</td>
-                  <td className="table__num">{e.risk_weight}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <table className="table table--fixed">
-            <colgroup>
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '42%' }} />
-              <col style={{ width: '35%' }} />
-              <col style={{ width: '5%' }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th>채널</th>
-                <th>제목</th>
-                <th>수신자</th>
-                <th aria-label="펼치기" />
-              </tr>
-            </thead>
-            <tbody>
-              {report.suspicious_emails.map((e) => (
-                <ExpandableRow key={e.email_id}>
-                  <td><span className="table__cat">{channelLabel(e.channel_type)}</span></td>
-                  <td className="table__name">{e.subject}</td>
-                  <td className="table__path">{e.recipient}</td>
-                </ExpandableRow>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+      <StepSection num={3} emoji="📁" title="민감 파일 분류">
+        {narrative?.step3?.length
+          ? <NarrativeBullets items={narrative.step3} />
+          : <Step3 files={report.suspicious_files} />}
+      </StepSection>
 
-      <BehaviorSection behavior={report.behavior_summary} layout={layout} />
+      <StepSection num={4} emoji="🕒" title="행동 패턴 분석">
+        {narrative?.step4?.length
+          ? <NarrativeBullets items={narrative.step4} />
+          : <Step4 behavior={report.behavior_summary} />}
+      </StepSection>
 
-      <TimelineSection timeline={report.timeline} />
+      <StepSection num={5} emoji="⚖️" title="반증 검증">
+        {narrative?.step5?.length
+          ? <NarrativeBullets items={narrative.step5} />
+          : <Step5 breakdown={report.risk_breakdown} />}
+      </StepSection>
 
-      <section className="vd__section">
-        <h3 className="vd__h">
-          증거 네트워크 (노드 {net.nodes.length} · 엣지 {net.edges.length})
-        </h3>
-        <ul className="vd__net">
-          {net.nodes.map((n) => (
-            <li key={n.id} className="vd__net-node">
-              <span className="table__cat">{nodeTypeLabel(n.type)}</span>
-              <span>{n.label}</span>
-            </li>
-          ))}
-        </ul>
-        <ul className="vd__net">
-          {net.edges.map((e, i) => {
-            const src = net.nodes.find((n) => n.id === e.source)
-            const tgt = net.nodes.find((n) => n.id === e.target)
-            return (
-              <li key={i} className="vd__net-edge">
-                <span>{src?.label ?? e.source}</span>
-                <span className="vd__rel">─ {relationLabel(e.relation)} →</span>
-                <span>{tgt?.label ?? e.target}</span>
-              </li>
-            )
-          })}
-        </ul>
-      </section>
+      <StepSection num={0} emoji="🏁" title="최종 판정" final>
+        {narrative?.final?.length
+          ? <NarrativeBullets items={narrative.final} />
+          : <FinalSection
+              verdict={report.verdict}
+              risk_score={report.risk_score}
+              risk_breakdown={report.risk_breakdown}
+            />}
+      </StepSection>
     </div>
   )
 }
+
+// ── CleanReportView ──────────────────────────────────────────────────────────
 
 function CleanReportView({ report }: { report: CleanReport }) {
   const a = report.analysis_summary
@@ -462,11 +383,22 @@ function CleanReportView({ report }: { report: CleanReport }) {
   )
 }
 
-export function VerdictViewer({ sessionId, layout }: { sessionId: string | null; layout: ConsoleLayout }) {
+// ── VerdictViewer (exported) ─────────────────────────────────────────────────
+
+export function VerdictViewer({ sessionId }: { sessionId: string | null; layout: ConsoleLayout }) {
   const { data, isLoading, isError } = useQuery<Session>({
     queryKey: ['session', sessionId],
     queryFn: () => fetchSession(sessionId as string),
     enabled: sessionId != null,
+  })
+
+  const classified = data ? classifyReport(data.report_json) : null
+
+  const { data: narrative } = useQuery<AdminNarrative>({
+    queryKey: ['admin-narrative', sessionId],
+    queryFn: () => fetchAdminNarrative(sessionId!),
+    enabled: !!sessionId && classified?.kind === 'exfiltration',
+    retry: false,
   })
 
   if (sessionId == null) {
@@ -484,16 +416,15 @@ export function VerdictViewer({ sessionId, layout }: { sessionId: string | null;
     return <div className="table__msg">점검 보고서 불러오는 중…</div>
   }
 
-  const classified = classifyReport(data.report_json)
-  if (classified.kind === 'invalid') {
+  if (!classified || classified.kind === 'invalid') {
     return (
       <div className="table__msg">
-        리포트를 표시할 수 없습니다 — {classified.reason}
+        리포트를 표시할 수 없습니다{classified?.kind === 'invalid' ? ` — ${classified.reason}` : ''}
       </div>
     )
   }
   if (classified.kind === 'clean') {
     return <CleanReportView report={classified.report} />
   }
-  return <ExfiltrationReportView report={classified.report} layout={layout} />
+  return <ExfiltrationReportView report={classified.report} narrative={narrative} />
 }

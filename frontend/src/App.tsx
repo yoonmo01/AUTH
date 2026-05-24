@@ -10,12 +10,16 @@ import { PipelineScreen } from './components/PipelineScreen'
 import { Console } from './components/Console'
 import { AdminDashboard } from './components/AdminDashboard'
 import { AdminSessionDetail } from './components/AdminSessionDetail'
+import { TestViewer } from './components/TestViewer'
 
 function App() {
   const params = new URLSearchParams(window.location.search)
   const devSession = params.get('session')
   if (devSession) {
     return <Console initialSessionId={devSession} />
+  }
+  if (params.has('viewer')) {
+    return <TestViewer />
   }
 
   const [flow, dispatch] = useReducer(flowReducer, initialFlowState)

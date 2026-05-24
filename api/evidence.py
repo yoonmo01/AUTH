@@ -24,6 +24,38 @@ _DATA_ROOT = (Path(__file__).resolve().parents[1] / "data").resolve()
 _CONVERTED_ROOT = (_DATA_ROOT / "converted_documents").resolve()
 
 
+def _build_converted_index() -> dict[str, tuple[str, str]]:
+    """manifest.jsonl 읽어 {정규화 상대경로 → (converted_file_id, target_ext)} 인덱스 생성."""
+    index: dict[str, tuple[str, str]] = {}
+    manifest = _CONVERTED_ROOT / "manifest.jsonl"
+    if not manifest.is_file():
+        return index
+    import json
+    with manifest.open(encoding="utf-8", errors="replace") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                d = json.loads(line)
+            except Exception:
+                continue
+            src = d.get("source_path", "")
+            fid = d.get("file_id", "")
+            ext = d.get("target_ext", "")
+            # source_path: "C:\capstone\HYENA CTF\..." → 정규화: "HYENA CTF\..."
+            norm = src.replace("/", "\\")
+            for prefix in ("C:\\capstone\\", "C:\\capstone/"):
+                if norm.startswith(prefix):
+                    norm = norm[len(prefix):]
+                    break
+            index[norm.lower()] = (fid, ext)
+    return index
+
+
+_CONVERTED_INDEX: dict[str, tuple[str, str]] = _build_converted_index()
+
+
 @router.get("/summary")
 def get_summary():
     files      = query("SELECT count(*) as cnt FROM files;")
@@ -73,14 +105,30 @@ def get_file_raw(file_id: str):
 
 @router.get("/files/{file_id}/converted")
 def get_file_converted(file_id: str):
-    """변환된 파일 서빙: doc→docx, hwp→hwpx. converted_documents/{docx|hwpx}/{id}.ext"""
+    """변환된 파일 서빙: doc→docx, hwp→hwpx.
+    1차: converted_documents/{docx|hwpx}/{file_id}.ext (현재 ID 기준)
+    2차: DB relative_path → manifest 인덱스 → 구 ID로 조회 (DB 재적재 후 ID 변경 대응)
+    """
     require_uuid(file_id, "file_id")
+
+    # 1차: 현재 file_id로 직접 조회
     for subdir, ext in [("docx", ".docx"), ("hwpx", ".hwpx")]:
         candidate = (_CONVERTED_ROOT / subdir / f"{file_id}{ext}").resolve()
-        if not str(candidate).startswith(str(_CONVERTED_ROOT)):
-            raise HTTPException(403, "Access denied")
-        if candidate.is_file():
+        if str(candidate).startswith(str(_CONVERTED_ROOT)) and candidate.is_file():
             return FileResponse(str(candidate))
+
+    # 2차: DB에서 relative_path 조회 → manifest 인덱스로 구 ID 찾기
+    rows = query(f"SELECT relative_path FROM files WHERE id='{file_id}';")
+    if not rows:
+        raise HTTPException(404, "File not found")
+    rel = rows[0]["relative_path"].replace("/", "\\")
+    converted_id, target_ext = _CONVERTED_INDEX.get(rel.lower(), ("", ""))
+    if converted_id and target_ext:
+        subdir = target_ext.lstrip(".")  # .docx → docx
+        candidate = (_CONVERTED_ROOT / subdir / f"{converted_id}{target_ext}").resolve()
+        if str(candidate).startswith(str(_CONVERTED_ROOT)) and candidate.is_file():
+            return FileResponse(str(candidate))
+
     raise HTTPException(404, "No converted file available")
 
 

@@ -309,3 +309,13 @@ export interface SelectedItem {
   id: string
   label: string
 }
+
+export interface AdminNarrative {
+  step1: string[]
+  step2: string[]
+  step3: string[]
+  step4: string[]
+  step5: string[]
+  final: string[]
+  review_guide: string
+}
