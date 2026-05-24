@@ -1,8 +1,18 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchSession, fetchFindings, postExplanation, skipExplanation } from '../api/client'
-import type { Finding } from '../types'
+import type { Finding, SuspiciousEmail, SuspiciousFile } from '../types'
 import { classifyReport } from '../report'
+import {
+  emailRecordFromSuspicious,
+  fileRecordFromSuspicious,
+  sensitivityCategoryPlain,
+  whyCheckForEmail,
+  whyCheckForFile,
+} from '../reportLabels'
+import { formatDate } from '../format'
+import { FileBodyModal } from './FileBodyModal'
+import { EmailBodyModal } from './EmailBodyModal'
 
 type Props = {
   sessionId: string
@@ -14,93 +24,88 @@ type Props = {
   explanationText?: string
 }
 
-const VERDICT_KO: Record<string, { label: string; cls: string }> = {
-  HIGH:   { label: '중점 소명 필요', cls: 'erpt__badge--high' },
-  MEDIUM: { label: '주의',      cls: 'erpt__badge--med'  },
-  LOW:    { label: '확인 필요', cls: 'erpt__badge--low'  },
-  CLEAN:  { label: '특이사항 없음', cls: 'erpt__badge--clean'},
+type BadgeKind = 'explain' | 'ok'
+
+const BADGE_LABELS: Record<BadgeKind, { label: string; cls: string }> = {
+  explain: { label: '📝 설명이 필요해요', cls: 'erpt__badge--explain' },
+  ok: { label: '✅ 확인 완료만 해주세요', cls: 'erpt__badge--ok' },
 }
 
-const SEVERITY_KO: Record<string, string> = {
-  HIGH:   '높음',
-  MEDIUM: '중간',
-  LOW:    '낮음',
-  INFO:   '정보',
-}
-
-function severityOrder(s: string) {
-  return { HIGH: 0, MEDIUM: 1, LOW: 2, INFO: 3 }[s] ?? 4
+function badgeKindFor(verdict: string): BadgeKind {
+  if (verdict === 'HIGH' || verdict === 'MEDIUM') return 'explain'
+  return 'ok'
 }
 
 type ReportItem = {
   id: string
-  severity: 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO'
-  title: string
-  description: string
-  meta?: string
+  icon: string
+  what: string
+  whyCheck: string
+  detail: string
+  view:
+    | { kind: 'file'; data: SuspiciousFile }
+    | { kind: 'email'; data: SuspiciousEmail }
+    | null
 }
 
-function severityFromWeight(weight: number): ReportItem['severity'] {
-  if (weight >= 18) return 'HIGH'
-  if (weight >= 10) return 'MEDIUM'
-  if (weight > 0) return 'LOW'
-  return 'INFO'
+function pathReadable(relativePath: string): string {
+  if (!relativePath) return '경로 정보 없음'
+  const parts = relativePath.split(/[\\/]/).filter(Boolean)
+  const tail = parts.slice(-3, -1)
+  if (tail.length === 0) return relativePath
+  return tail.join(' > ')
 }
 
 function findingsFromReport(reportJson: unknown): {
   verdict: string
-  riskScore: number
-  summary: string
   items: ReportItem[]
 } | null {
   const classified = classifyReport(reportJson)
 
   if (classified.kind === 'clean') {
-    return {
-      verdict: classified.report.verdict,
-      riskScore: classified.report.risk_score,
-      summary: classified.report.summary,
-      items: [],
-    }
+    return { verdict: classified.report.verdict, items: [] }
   }
 
   if (classified.kind !== 'exfiltration') return null
 
   const report = classified.report
+
   const emailItems: ReportItem[] = report.suspicious_emails.map((email) => ({
     id: email.email_id || `${email.channel_type}-${email.sent_at}-${email.recipient}`,
-    severity: severityFromWeight(email.risk_weight),
-    title: email.subject || `${email.recipient} 발신 메일`,
-    description: email.suspicion_reason,
-    meta: `${email.sender} -> ${email.recipient} / ${email.sent_at}`,
+    icon: '📧',
+    what: email.subject
+      ? `'${email.subject}' 메일이 외부로 발송된 기록이 있어요`
+      : `외부로 발송된 메일 기록이 있어요`,
+    whyCheck: whyCheckForEmail(email),
+    detail: `발송 시각: ${formatDate(email.sent_at)} · 받는 사람: ${email.recipient}`,
+    view: { kind: 'email', data: email },
   }))
 
   const fileItems: ReportItem[] = report.suspicious_files.slice(0, 5).map((file) => ({
     id: file.file_id || file.relative_path,
-    severity: file.sensitivity_score >= 0.9 ? 'HIGH' : 'MEDIUM',
-    title: `민감 문서: ${file.filename}`,
-    description: `${file.sensitivity_category} 문서로 분류되었습니다. 주요 키워드: ${file.matched_keywords.join(', ') || '없음'}`,
-    meta: file.relative_path,
+    icon: '📄',
+    what: `${sensitivityCategoryPlain(file.sensitivity_category)} 파일이 다뤄진 기록이 있어요`,
+    whyCheck: whyCheckForFile(file),
+    detail: `파일 이름: ${file.filename} · 위치: ${pathReadable(file.relative_path)}`,
+    view: { kind: 'file', data: file },
   }))
 
   return {
     verdict: report.verdict,
-    riskScore: report.risk_score,
-    summary: report.summary,
     items: [...emailItems, ...fileItems],
   }
 }
 
 function findingsFromTable(findings: Finding[]): ReportItem[] {
   return findings
-    .sort((a, b) => severityOrder(a.severity) - severityOrder(b.severity))
     .filter((f) => f.severity === 'HIGH' || f.severity === 'MEDIUM' || f.severity === 'LOW')
     .map((f) => ({
       id: f.id,
-      severity: f.severity,
-      title: f.title,
-      description: f.description ?? '',
-      meta: f.agent_name ? `담당: ${f.agent_name}` : undefined,
+      icon: '🔍',
+      what: f.title,
+      whyCheck: f.description ?? '확인이 필요한 활동으로 분류된 항목이에요',
+      detail: f.agent_name ? `담당 점검: ${f.agent_name}` : '',
+      view: null,
     }))
 }
 
@@ -121,6 +126,8 @@ export function EmployeeReport({
   const [explanationInput, setExplanationInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [viewingFile, setViewingFile] = useState<SuspiciousFile | null>(null)
+  const [viewingEmail, setViewingEmail] = useState<SuspiciousEmail | null>(null)
 
   const { data: session, isLoading: sessionLoading } = useQuery({
     queryKey: ['session', sessionId],
@@ -169,8 +176,8 @@ export function EmployeeReport({
 
   const reportView = findingsFromReport(session?.report_json)
   const verdict = reportView?.verdict ?? (session?.verdict as string) ?? ''
-  const riskScore = reportView?.riskScore ?? session?.risk_score ?? 0
-  const verdictInfo = VERDICT_KO[verdict] ?? { label: verdict || '분석 중', cls: '' }
+  const riskScore = session?.risk_score ?? 0
+  const badge = BADGE_LABELS[badgeKindFor(verdict)]
   const explanationRequired = requiresExplanation(verdict, Number(riskScore))
 
   const displayFindings = reportView
@@ -185,24 +192,63 @@ export function EmployeeReport({
       </div>
 
       <div className="erpt__verdict-row">
-        <span className={`erpt__badge ${verdictInfo.cls}`}>{verdictInfo.label}</span>
-        <span className="erpt__risk">위험 점수: {riskScore}점</span>
+        <span className={`erpt__badge ${badge.cls}`}>{badge.label}</span>
       </div>
 
-      {reportView?.summary && <p className="erpt__summary">{reportView.summary}</p>}
+      <div className="erpt__guide">
+        <p className="erpt__guide-title">📌 안내</p>
+        <ul className="erpt__guide-list">
+          <li>이 보고서는 정기 점검에서 자동으로 살펴본 내용입니다. '문제'가 아니라 '확인이 필요한' 활동이에요.</li>
+          <li>각 항목의 <strong>'내용 보기'</strong> 버튼을 눌러 어떤 자료인지 직접 확인할 수 있어요.</li>
+          <li>확인 후, 옮기신 이유나 업무상 사정을 아래 <strong>입력란에 한 번에</strong> 적어주세요. (항목 번호를 같이 적어주시면 좋아요)</li>
+        </ul>
+      </div>
 
       <div className="erpt__findings">
-        <h2 className="erpt__findings-title">점검 항목</h2>
+        <h2 className="erpt__findings-title">확인이 필요한 항목</h2>
         {displayFindings.length === 0 ? (
           <p className="erpt__empty">특이 사항이 발견되지 않았습니다.</p>
         ) : (
           displayFindings.map((f, i) => (
             <div key={f.id} className="erpt__item">
-              <span className="erpt__item-num">{i + 1}.</span>
-              <p className="erpt__item-title">{f.title}</p>
-              {f.description && <p className="erpt__item-desc">{f.description}</p>}
-              {f.meta && <p className="erpt__item-meta">{f.meta}</p>}
-              <p className="erpt__item-sev">심각도: {SEVERITY_KO[f.severity] ?? f.severity}</p>
+              <p className="erpt__item-title">
+                <span className="erpt__item-num">{i + 1}.</span>
+                <span className="erpt__item-icon">{f.icon}</span>
+                {f.what}
+              </p>
+
+              <div className="erpt__item-block">
+                <p className="erpt__item-block-label">무엇이 발견됐나요?</p>
+                <p className="erpt__item-block-text">{f.detail}</p>
+              </div>
+
+              <div className="erpt__item-block">
+                <p className="erpt__item-block-label">왜 확인이 필요한가요?</p>
+                <p className="erpt__item-block-text">{f.whyCheck}</p>
+              </div>
+
+              {f.view?.kind === 'file' && (
+                <div className="erpt__item-actions">
+                  <button
+                    type="button"
+                    className="erpt__view-btn"
+                    onClick={() => setViewingFile(f.view!.data as SuspiciousFile)}
+                  >
+                    📂 파일 내용 보기
+                  </button>
+                </div>
+              )}
+              {f.view?.kind === 'email' && (
+                <div className="erpt__item-actions">
+                  <button
+                    type="button"
+                    className="erpt__view-btn"
+                    onClick={() => setViewingEmail(f.view!.data as SuspiciousEmail)}
+                  >
+                    ✉️ 메일 내용 보기
+                  </button>
+                </div>
+              )}
             </div>
           ))
         )}
@@ -211,15 +257,15 @@ export function EmployeeReport({
       {!readOnly && explanationRequired && (
         <div className="erpt__explain">
           <label className="erpt__explain-label">
-            위 활동에 대한 소명을 입력해주세요
-            <small>(예: "3번은 거래처 A사에 공유한 정기 보고서입니다")</small>
+            위 항목에 대한 설명을 입력해주세요
+            <small>(예: "1번은 거래처 A사와 정기적으로 공유하는 보고서입니다. 2번은 …")</small>
           </label>
           <textarea
             className="erpt__explain-area"
-            rows={5}
+            rows={6}
             value={explanationInput}
             onChange={(e) => setExplanationInput(e.target.value)}
-            placeholder="해당 활동에 대해 설명해주세요..."
+            placeholder="각 항목에 대해 편하게 설명해주세요. 항목 번호를 같이 적어주시면 검토에 도움이 됩니다."
           />
           {submitError && <p className="erpt__err">{submitError}</p>}
           <button
@@ -234,9 +280,9 @@ export function EmployeeReport({
 
       {!readOnly && !explanationRequired && (
         <div className="erpt__explain erpt__explain--skip">
-          <p className="erpt__skip-title">소명 제출 대상이 아닙니다.</p>
+          <p className="erpt__skip-title">추가로 설명해주실 항목이 없습니다.</p>
           <p className="erpt__skip-text">
-            위험도가 LOW이거나 위험 점수가 20점 이하인 점검은 별도 소명을 받지 않습니다.
+            아래 '확인 완료' 버튼을 눌러 점검을 마무리해주세요.
           </p>
           {submitError && <p className="erpt__err">{submitError}</p>}
           <button
@@ -254,6 +300,22 @@ export function EmployeeReport({
           <h4 className="erpt__explain-label">직원 소명</h4>
           <p className="erpt__explain-text">{explanationText}</p>
         </div>
+      )}
+
+      {viewingFile && (
+        <FileBodyModal
+          file={fileRecordFromSuspicious(viewingFile)}
+          highlightKeywords={viewingFile.matched_keywords}
+          onClose={() => setViewingFile(null)}
+        />
+      )}
+
+      {viewingEmail && (
+        <EmailBodyModal
+          email={emailRecordFromSuspicious(viewingEmail)}
+          suspicionReason={viewingEmail.suspicion_reason}
+          onClose={() => setViewingEmail(null)}
+        />
       )}
     </div>
   )

@@ -21,6 +21,7 @@ from api.models import esc, require_uuid
 router = APIRouter()
 
 _DATA_ROOT = (Path(__file__).resolve().parents[1] / "data").resolve()
+_CONVERTED_ROOT = (_DATA_ROOT / "converted_documents").resolve()
 
 
 @router.get("/summary")
@@ -68,6 +69,19 @@ def get_file_raw(file_id: str):
     if not full_path.is_file():
         raise HTTPException(404, "File not on disk")
     return FileResponse(str(full_path))
+
+
+@router.get("/files/{file_id}/converted")
+def get_file_converted(file_id: str):
+    """변환된 파일 서빙: doc→docx, hwp→hwpx. converted_documents/{docx|hwpx}/{id}.ext"""
+    require_uuid(file_id, "file_id")
+    for subdir, ext in [("docx", ".docx"), ("hwpx", ".hwpx")]:
+        candidate = (_CONVERTED_ROOT / subdir / f"{file_id}{ext}").resolve()
+        if not str(candidate).startswith(str(_CONVERTED_ROOT)):
+            raise HTTPException(403, "Access denied")
+        if candidate.is_file():
+            return FileResponse(str(candidate))
+    raise HTTPException(404, "No converted file available")
 
 
 @router.get("/files/{file_id}/content")
