@@ -66,6 +66,22 @@ export const fetchFileRawText = (id: string): Promise<string> =>
       return res.text()
     })
 
+export const fetchFileRawBuffer = (id: string): Promise<ArrayBuffer> =>
+  fetch(`${BASE}/files/${id}/raw`)
+    .then((res) => {
+      if (!res.ok) throw new Error(`원본 파일 조회 실패 (${res.status})`)
+      return res.arrayBuffer()
+    })
+
+export const fileRawUrl = (id: string): string => `${BASE}/files/${id}/raw`
+
+export const fetchConvertedBuffer = (id: string): Promise<ArrayBuffer> =>
+  fetch(`${BASE}/files/${id}/converted`)
+    .then((res) => {
+      if (!res.ok) throw new Error(`변환 파일 조회 실패 (${res.status})`)
+      return res.arrayBuffer()
+    })
+
 // ── Emails ───────────────────────────────────────────────────
 export const fetchEmails = (q: string, limit = 50): Promise<EmailRecord[]> => {
   const params = new URLSearchParams({ q, limit: String(limit) })

@@ -1946,6 +1946,121 @@ select.iform__input {
   box-shadow: inset 0 -2px 0 var(--ok);
 }
 
+/* ── 원본 파일 뷰어 (audio / pdf / xlsx / docx) ─────────── */
+
+.doc--audio {
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--panel-2);
+}
+.doc--audio audio {
+  width: 100%;
+  display: block;
+}
+.doc__hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+}
+
+.doc--pdf {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+}
+.doc__pdf-frame {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 520px;
+  border: 0;
+  background: #ffffff;
+}
+
+.doc--xlsx,
+.doc--docx,
+.doc--hwp {
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.doc--xlsx table {
+  border-collapse: collapse;
+  font-size: 11.5px;
+  margin-bottom: 1rem;
+  table-layout: auto;
+}
+.doc--xlsx td,
+.doc--xlsx th {
+  border: 1px solid var(--line-soft);
+  padding: 4px 8px;
+  vertical-align: top;
+  min-width: 80px;
+  max-width: 360px;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.doc--xlsx td:hover {
+  white-space: normal;
+  word-break: keep-all;
+  overflow: visible;
+  background: var(--panel-2);
+}
+.doc--xlsx th {
+  background: var(--panel-2);
+  font-weight: 600;
+}
+.doc--docx img,
+.doc--hwp img {
+  max-width: 100%;
+  height: auto;
+}
+.doc--docx table,
+.doc--hwp table {
+  border-collapse: collapse;
+  margin: 0.5rem 0 1rem;
+}
+.doc--docx td,
+.doc--hwp td,
+.doc--docx th,
+.doc--hwp th {
+  border: 1px solid var(--line-soft);
+  padding: 4px 8px;
+  vertical-align: top;
+}
+
+.doc__sheet-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--panel-2);
+  overflow-x: auto;
+}
+.doc__sheet-tab {
+  flex: none;
+  padding: 6px 12px;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--ink-dim);
+  cursor: pointer;
+}
+.doc__sheet-tab:hover,
+.doc__sheet-tab:focus {
+  color: var(--ink);
+  outline: none;
+}
+.doc__sheet-tab--active {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
 /* ============================================================
    NETWORK — React Flow evidence graph
    ============================================================ */
@@ -3104,7 +3219,34 @@ select.iform__input {
 .erpt__badge--med   { background: var(--warn);   color: #fff; }
 .erpt__badge--low   { background: var(--accent); color: #fff; }
 .erpt__badge--clean { background: var(--ok);     color: #fff; }
+.erpt__badge--explain { background: var(--warn); color: #fff; }
+.erpt__badge--ok      { background: var(--ok);   color: #fff; }
 .erpt__risk { font-size: 0.8rem; color: var(--ink-dim); }
+.erpt__guide {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem;
+  background: var(--panel-2);
+  border-left: 3px solid var(--accent);
+  font-size: 0.82rem;
+  color: var(--ink-dim);
+  line-height: 1.55;
+}
+.erpt__guide-title {
+  margin: 0 0 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.erpt__guide-list {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.erpt__guide-list li {
+  margin-bottom: 0.3rem;
+}
+.erpt__guide-list strong {
+  color: var(--ink);
+}
 .erpt__summary {
   margin: 0 0 1.5rem;
   padding: 0.85rem 1rem;
@@ -3117,12 +3259,68 @@ select.iform__input {
 .erpt__findings { margin: 1.5rem 0; }
 .erpt__findings-title { font-size: 0.85rem; font-weight: 600; margin-bottom: 0.75rem; border-bottom: 1px solid var(--line); padding-bottom: 0.5rem; }
 .erpt__empty { font-size: 0.875rem; color: var(--ink-dim); }
-.erpt__item { margin-bottom: 1rem; padding: 0.75rem; background: var(--panel-2); border-left: 3px solid var(--line-hot); }
-.erpt__item-num { font-family: var(--f-mono); font-size: 0.7rem; color: var(--accent); display: block; margin-bottom: 0.2rem; }
-.erpt__item-title { font-weight: 600; font-size: 0.875rem; margin: 0 0 0.25rem; }
-.erpt__item-desc { font-size: 0.8rem; color: var(--ink-dim); line-height: 1.5; margin: 0 0 0.25rem; }
-.erpt__item-meta { font-size: 0.72rem; color: var(--ink-faint); line-height: 1.45; margin: 0 0 0.25rem; overflow-wrap: anywhere; }
-.erpt__item-sev { font-size: 0.75rem; color: var(--ink-faint); margin: 0; font-family: var(--f-mono); }
+.erpt__item {
+  margin-bottom: 1.1rem;
+  padding: 0.9rem 1rem;
+  background: var(--panel-2);
+  border-left: 3px solid var(--line-hot);
+}
+.erpt__item-num {
+  font-family: var(--f-mono);
+  font-size: 0.78rem;
+  color: var(--accent);
+  margin-right: 0.4rem;
+}
+.erpt__item-icon { margin-right: 0.3rem; }
+.erpt__item-title {
+  font-weight: 600;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin: 0 0 0.75rem;
+  color: var(--ink);
+}
+.erpt__item-block {
+  margin: 0.5rem 0;
+  padding: 0.55rem 0.75rem;
+  background: #ffffff;
+  border: 1px solid var(--line-soft);
+  border-radius: 2px;
+}
+.erpt__item-block-label {
+  margin: 0 0 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+.erpt__item-block-text {
+  margin: 0;
+  font-size: 0.83rem;
+  color: var(--ink);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.erpt__item-actions {
+  margin-top: 0.6rem;
+  display: flex;
+  gap: 0.5rem;
+}
+.erpt__view-btn {
+  padding: 0.4rem 0.85rem;
+  background: #ffffff;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: var(--f-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.erpt__view-btn:hover,
+.erpt__view-btn:focus {
+  background: var(--accent);
+  color: #ffffff;
+  outline: none;
+}
 .erpt__explain { margin-top: 2rem; border-top: 1px solid var(--line); padding-top: 1.5rem; }
 .erpt__explain-label { font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 0.5rem; }
 .erpt__explain-label small { font-weight: 400; color: var(--ink-faint); margin-left: 0.5rem; }
@@ -3880,7 +4078,157 @@ select.iform__input {
 
 .adetail-analysis__right {
   display: flex;
+  flex-direction: column;
   min-height: 0;
+}
+
+.adetail-analysis__right-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.adetail-analysis__pill--high {
+  background: rgba(224, 39, 74, 0.12);
+  color: var(--bad);
+}
+
+.adetail-analysis__pill--med {
+  background: rgba(218, 165, 32, 0.18);
+  color: var(--warn);
+}
+
+/* 에이전트 분석 요약 헤더 */
+.adetail-summary {
+  flex: none;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+  overflow: auto;
+  max-height: 45%;
+}
+
+.adetail-summary__empty {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-dim);
+}
+
+.adetail-summary__focus {
+  margin-bottom: 0.7rem;
+  padding: 0.65rem 0.8rem;
+  background: #ffffff;
+  border-left: 3px solid var(--accent);
+}
+
+.adetail-summary__focus-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.adetail-summary__focus-list {
+  margin: 0;
+  padding-left: 1.3rem;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.adetail-summary__focus-list li {
+  margin-bottom: 0.18rem;
+}
+
+.adetail-summary__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.adetail-summary__card {
+  background: #ffffff;
+  border: 1px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.adetail-summary__card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--panel-2);
+}
+
+.adetail-summary__card-num {
+  flex: none;
+  font-size: 1rem;
+}
+
+.adetail-summary__card-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.adetail-summary__card-title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.adetail-summary__card-hint {
+  margin: 0.1rem 0 0;
+  font-size: 0.72rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.adetail-summary__card-tag {
+  flex: none;
+  font-family: var(--f-mono);
+  font-size: 0.62rem;
+  color: var(--ink-faint);
+  letter-spacing: 0.04em;
+}
+
+.adetail-summary__card-body {
+  padding: 0.55rem 0.75rem 0.7rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.adetail-summary__list {
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.adetail-summary__list li {
+  margin-bottom: 0.22rem;
+  overflow-wrap: anywhere;
+}
+
+.adetail-summary__notes {
+  margin: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.adetail-summary__muted {
+  margin: 0;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+@media (max-width: 1100px) {
+  .adetail-summary__grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .adetail-analysis__right .zone {
