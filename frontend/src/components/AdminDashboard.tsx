@@ -44,11 +44,6 @@ function statusLabel(status: string): string {
   return STATUS_LABELS[status] ?? status
 }
 
-function riskValue(value: string | number | null | undefined): string {
-  if (value === null || value === undefined || value === '') return '-'
-  return `${Number(value).toLocaleString()}점`
-}
-
 function riskNumber(value: string | number | null | undefined): number {
   if (value === null || value === undefined || value === '') return 0
   const n = Number(value)
@@ -116,37 +111,52 @@ export function AdminDashboard({ adminName, onOpenSession, onLogout }: Props) {
   return (
     <div className="adash">
       <header className="adash__hdr">
-        <div className="adash__brand">AUTH 정기 점검 관리</div>
-        <div className="adash__user">관리자: {adminName}</div>
-        <button
-          className="adash__refresh"
-          type="button"
-          onClick={() => void refetch()}
-          disabled={isFetching}
-        >
-          {isFetching ? '갱신 중' : '새로고침'}
-        </button>
-        <button className="adash__logout" type="button" onClick={onLogout}>
-          로그아웃
-        </button>
+        <div className="adash__brand">
+          <span className="adash__brand-dot" aria-hidden="true" />
+          AUTH 점검 관리
+        </div>
+        <div className="adash__hdr-right">
+          <button
+            className="adash__refresh"
+            type="button"
+            onClick={() => void refetch()}
+            disabled={isFetching}
+          >
+            {isFetching ? '갱신 중…' : '새로고침'}
+          </button>
+          <div className="adash__hdr-divider" aria-hidden="true" />
+          <div className="adash__profile">
+            <span className="adash__profile-avatar" aria-hidden="true">
+              {adminName.charAt(0)}
+            </span>
+            <span className="adash__profile-name">{adminName}</span>
+          </div>
+          <button className="adash__logout" type="button" onClick={onLogout}>
+            로그아웃
+          </button>
+        </div>
       </header>
 
       <main className="adash__body">
         <section className="adash__summary" aria-label="제출 현황">
           <p className="adash__summary-title">제출 현황</p>
           <div className="adash__metric">
+            <span className="adash__metric-dot adash__metric-dot--total" aria-hidden="true" />
             <span className="adash__metric-label">전체 제출</span>
             <strong className="adash__metric-value">{inbox.length}</strong>
           </div>
           <div className="adash__metric">
+            <span className="adash__metric-dot adash__metric-dot--submitted" aria-hidden="true" />
             <span className="adash__metric-label">미검토</span>
             <strong className="adash__metric-value">{submittedCount}</strong>
           </div>
           <div className="adash__metric">
+            <span className="adash__metric-dot adash__metric-dot--reviewed" aria-hidden="true" />
             <span className="adash__metric-label">검토완료</span>
             <strong className="adash__metric-value">{reviewedCount}</strong>
           </div>
           <div className="adash__metric">
+            <span className="adash__metric-dot adash__metric-dot--required" aria-hidden="true" />
             <span className="adash__metric-label">소명 필요</span>
             <strong className="adash__metric-value">{explanationRequiredCount}</strong>
           </div>
@@ -194,6 +204,10 @@ export function AdminDashboard({ adminName, onOpenSession, onLogout }: Props) {
           </div>
 
           <section className="adash__panel">
+            <div className="adash__section-hdr">
+              <span className="adash__section-title">제출 세션 목록</span>
+              <span className="adash__section-count">{filtered.length}건</span>
+            </div>
           {isLoading ? (
             <p className="adash__state">제출 목록을 불러오는 중...</p>
           ) : error ? (
@@ -201,20 +215,23 @@ export function AdminDashboard({ adminName, onOpenSession, onLogout }: Props) {
               관리자 목록을 불러오지 못했습니다. 백엔드(:8000) 상태를 확인하세요.
             </p>
           ) : filtered.length === 0 ? (
-            <p className="adash__state">표시할 제출 세션이 없습니다.</p>
+            <div className="adash__empty">
+              <span className="adash__empty-icon" aria-hidden="true">📋</span>
+              <p className="adash__empty-msg">표시할 제출 세션이 없습니다.</p>
+              <p className="adash__empty-sub">필터 조건을 변경하거나 검색어를 확인해주세요.</p>
+            </div>
           ) : (
             <table className="adash__table">
               <thead>
                 <tr>
-                  <th>직원</th>
-                  <th>직급</th>
-                  <th>사번</th>
-                  <th>분기</th>
-                  <th>판정</th>
-                  <th>점수</th>
-                  <th>소명</th>
-                  <th>제출일시</th>
-                  <th>상태</th>
+                  <th style={{ width: '18%' }}>직원</th>
+                  <th style={{ width: '8%' }}>직급</th>
+                  <th style={{ width: '10%' }}>사번</th>
+                  <th style={{ width: '10%' }}>분기</th>
+                  <th style={{ width: '14%' }}>판정</th>
+                  <th style={{ width: '10%' }}>소명</th>
+                  <th style={{ width: '18%' }}>제출일시</th>
+                  <th style={{ width: '12%' }}>상태</th>
                 </tr>
               </thead>
               <tbody>
@@ -240,7 +257,6 @@ export function AdminDashboard({ adminName, onOpenSession, onLogout }: Props) {
                         {verdictLabel(entry.verdict)}
                       </span>
                     </td>
-                    <td className="adash__mono">{riskValue(entry.risk_score)}</td>
                     <td>
                       <span className={`adash__explain ${requiresExplanation(entry) ? 'adash__explain--required' : 'adash__explain--skip'}`}>
                         {requiresExplanation(entry) ? '필요' : '불필요'}

@@ -27,8 +27,8 @@ type Props = {
 type BadgeKind = 'explain' | 'ok'
 
 const BADGE_LABELS: Record<BadgeKind, { label: string; cls: string }> = {
-  explain: { label: '설명이 필요해요', cls: 'erpt__badge--explain' },
-  ok:      { label: '확인 완료만 해주세요', cls: 'erpt__badge--ok' },
+  explain: { label: '소명 필요', cls: 'erpt__badge--explain' },
+  ok:      { label: '확인만', cls: 'erpt__badge--ok' },
 }
 
 function badgeKindFor(verdict: string): BadgeKind {
@@ -194,15 +194,10 @@ export function EmployeeReport({
             <span className={`erpt__badge ${badge.cls}`}>{badge.label}</span>
           </div>
 
-          <div className="erpt__guide">
-            <ul className="erpt__guide-list">
-              <li>정기 점검에서 자동으로 확인된 활동 목록입니다.</li>
-              <li>각 항목은 문제가 아닌, <strong>확인이 필요한</strong> 활동입니다.</li>
-              <li>'내용 보기' 버튼으로 해당 자료를 직접 확인할 수 있습니다.</li>
-              <li>오른쪽 입력란에 각 항목에 대한 설명을 작성해주세요.</li>
-              <li>항목 번호를 함께 적으시면 검토에 도움이 됩니다.</li>
-            </ul>
-          </div>
+          <p className="erpt__guide">
+            정기 점검에서 자동 확인된 활동 목록입니다.
+            각 항목은 <strong>확인이 필요한</strong> 활동이며, '내용 보기'로 직접 자료를 열람할 수 있습니다.
+          </p>
 
           <div className="erpt__findings">
             <h2 className="erpt__findings-title">확인이 필요한 항목</h2>
@@ -251,6 +246,9 @@ export function EmployeeReport({
 
         {/* ── 오른쪽: 소명 패널 (sticky) ── */}
         <aside className="erpt__side">
+          <header className="erpt__side-hdr">
+            <h2 className="erpt__side-title">점검 제출</h2>
+          </header>
           {!readOnly && explanationRequired && (
             <div className="erpt__explain">
               <p className="erpt__explain-title">소명 작성</p>

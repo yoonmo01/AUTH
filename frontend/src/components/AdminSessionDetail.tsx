@@ -101,6 +101,25 @@ export function AdminSessionDetail({ sessionId, onBack }: Props) {
             상세 분석
           </button>
         </nav>
+        {tab === 'report' && entry && (
+          <div className="adetail__hdr-review">
+            {reviewed ? (
+              <span className="adetail__reviewed">
+                ✓ 검토 완료 {formatReviewedAt(entry.reviewed_at)}
+              </span>
+            ) : (
+              <button
+                className="adetail__review-btn"
+                type="button"
+                onClick={handleReview}
+                disabled={reviewing}
+              >
+                {reviewing ? '처리 중...' : '검토 완료'}
+              </button>
+            )}
+            {error && <span className="adetail__err">{error}</span>}
+          </div>
+        )}
       </header>
 
       <main className={`adetail__body adetail__body--${tab}`}>
@@ -133,25 +152,6 @@ export function AdminSessionDetail({ sessionId, onBack }: Props) {
         )}
       </main>
 
-      {tab === 'report' && entry && (
-        <footer className="adetail__review">
-          {reviewed ? (
-            <span className="adetail__reviewed">
-              검토 완료 {formatReviewedAt(entry.reviewed_at)}
-            </span>
-          ) : (
-            <button
-              className="adetail__review-btn"
-              type="button"
-              onClick={handleReview}
-              disabled={reviewing}
-            >
-              {reviewing ? '처리 중...' : '검토 완료'}
-            </button>
-          )}
-          {error && <span className="adetail__err">{error}</span>}
-        </footer>
-      )}
     </div>
   )
 }
