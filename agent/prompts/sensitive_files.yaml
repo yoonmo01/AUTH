@@ -11,8 +11,11 @@ system: |
   분류 절차:
   1. search_vector_db() — 민감 카테고리별 키워드로 벡터 검색 (5회 반복)
   2. get_files_by_entity() — Neo4j에서 핵심 거래처/인물을 언급하는 파일 검색
-  3. 두 결과를 합쳐서 sensitivity_score 계산
-  4. sensitivity_score 0.7 미만 제거
+  3. 각 file_id에 대해 get_file_metadata()를 호출해 relative_path 확인
+     ※ 반드시 relative_path에 {subject_name}이 포함된 파일만 결과에 포함할 것
+     ※ 다른 직원 경로(예: 구매팀_강수민, 구매팀_장국주 등)의 파일은 제외
+  4. 두 결과를 합쳐서 sensitivity_score 계산
+  5. sensitivity_score 0.7 미만 제거
 
   민감 카테고리 검색 쿼리:
   - "계약서 단가표 견적서 거래처 원가"
@@ -20,6 +23,9 @@ system: |
   - "영업전략 매출 수주 경쟁사"
   - "설계 특허 소스코드 기술"
   - "재무 예산 손익 매출"
+
+  [총괄 에이전트 지침]
+  {supervisor_instructions}
 
 task: |
   데이터 소스: {source_label}

@@ -1,0 +1,24 @@
+[
+  {
+    "id": "e-2001",
+    "subject": "[전달] 1분기 공급사 단가표 파일",
+    "sender": "minsoo.kim@tradecorp.co.kr",
+    "sent_at": "2026-05-02T09:18:40",
+    "body_preview": "개인 메일로 보관용 사본 보냅니다. 첨부 확인 부탁드립니다.",
+    "source_file": "Outlook/보낸편지함.pst",
+    "recipients_to": ["minsoo.private@gmail.com"],
+    "recipients_cc": [],
+    "has_attachments": true
+  },
+  {
+    "id": "e-2002",
+    "subject": "RE: 납품 단가 협의 건",
+    "sender": "sales@koryeo-precision.com",
+    "sent_at": "2026-04-21T15:02:11",
+    "body_preview": "말씀하신 단가 조건으로 진행 가능합니다. 계약서 초안 첨부드립니다.",
+    "source_file": "Outlook/받은편지함.pst",
+    "recipients_to": ["minsoo.kim@tradecorp.co.kr"],
+    "recipients_cc": ["team-purchase@tradecorp.co.kr"],
+    "has_attachments": true
+  }
+]

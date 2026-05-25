@@ -39,16 +39,26 @@ def get_files_by_entity(entity_names: str, source_label: str) -> str:
     Returns:
         파일 목록 JSON 문자열 (filename, file_id, mentioned_entities)
     """
-    # TODO: 동료 구현
-    # 힌트 (Cypher):
-    # MATCH (f:GNode {node_type:'file'})-[:MENTIONS]->(e:GNode)
-    # WHERE e.node_type IN ['organization', 'person']
-    #   AND e.label IN $entity_list
-    # RETURN f.label as filename, f.node_id as file_id,
-    #        collect(e.label) as mentioned_entities
-    # ORDER BY size(collect(e.label)) DESC
-    # LIMIT 30
-    raise NotImplementedError("get_files_by_entity 구현 필요 — graph_tools.py 참고")
+    entity_list = [e.strip() for e in entity_names.split(",")]
+    driver = get_neo4j_driver()
+    try:
+        with driver.session() as session:
+            result = session.run(
+                """
+                MATCH (f:GNode {node_type:'file'})-[:MENTIONS]->(e:GNode)
+                WHERE e.node_type IN ['organization', 'person']
+                  AND e.label IN $entity_list
+                RETURN split(f.node_id, ':')[1] AS file_id,
+                       collect(e.label) AS mentioned_entities
+                ORDER BY size(collect(e.label)) DESC
+                LIMIT 30
+                """,
+                entity_list=entity_list,
+            )
+            records = [dict(record) for record in result]
+    finally:
+        driver.close()
+    return json.dumps(records, ensure_ascii=False, default=str)
 
 
 @tool
@@ -101,8 +111,27 @@ def get_file_metadata(file_id: str) -> str:
     Returns:
         파일 메타데이터 JSON 문자열 (filename, relative_path, extension, file_size_bytes 등)
     """
-    # TODO: 동료 구현
-    # 힌트: PostgreSQL files 테이블 직접 조회
-    # SELECT id, relative_path, filename, extension, file_size_bytes, created_at
-    # FROM files WHERE id = %s
-    raise NotImplementedError("get_file_metadata 구현 필요 — graph_tools.py 참고")
+    import re
+    if not re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", file_id.strip()):
+        return json.dumps({"error": f"invalid uuid: {file_id}"})
+
+    from agent.tools.rdb_tools import get_pg_conn
+    conn = get_pg_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, relative_path, filename, extension, file_size,
+                       file_created_at, file_modified_at, category
+                FROM files
+                WHERE id = %s
+                """,
+                (file_id.strip(),),
+            )
+            row = cur.fetchone()
+            if row is None:
+                return json.dumps({})
+            col_names = [desc[0] for desc in cur.description]
+            return json.dumps(dict(zip(col_names, row)), ensure_ascii=False, default=str)
+    finally:
+        conn.close()

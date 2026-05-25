@@ -16,14 +16,14 @@ services:
     restart: unless-stopped
 
   qdrant:
-    image: qdrant/qdrant:v1.9.2
+    image: qdrant/qdrant:v1.13.0
     container_name: hyena_clean_qdrant
     profiles: ["ai"]
     ports:
       - "6333:6333"
       - "6334:6334"
     volumes:
-      - hyena_clean_qdrant:/qdrant/storage
+      - capstone_qdrantdata:/qdrant/storage
     restart: unless-stopped
 
   neo4j:
@@ -45,6 +45,7 @@ services:
 
 volumes:
   hyena_clean_pgdata:
-  hyena_clean_qdrant:
+  capstone_qdrantdata:
+    external: true
   hyena_clean_neo4j:
   hyena_clean_neo4j_logs:

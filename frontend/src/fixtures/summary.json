@@ -1,0 +1,16 @@
+{
+  "files": 1287,
+  "emails": 342,
+  "documents": 596,
+  "activities": 4810,
+  "entities": 218,
+  "chunks": 9043,
+  "relations": 1576,
+  "etl_status": [
+    { "category": "document", "etl_status": "done", "cnt": 596 },
+    { "category": "email_store", "etl_status": "done", "cnt": 342 },
+    { "category": "image", "etl_status": "done", "cnt": 211 },
+    { "category": "archive", "etl_status": "partial", "cnt": 48 },
+    { "category": "system_artifact", "etl_status": "done", "cnt": 90 }
+  ]
+}

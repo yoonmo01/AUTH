@@ -1,6 +1,6 @@
 # api/findings.py
-# 역할: 수사 결과(Findings) 및 증거 연결(Evidence) 라우터
-#   POST /findings                           → 수사 결과 생성 (session_id, finding_type, severity 등)
+# 역할: 점검 결과(Findings) 및 증거 연결(Evidence) 라우터
+#   POST /findings                           → 점검 결과 생성 (session_id, finding_type, severity 등)
 #                                              반환: {id}
 #   GET  /sessions/{session_id}/findings     → 세션의 결과 목록 + 각 결과의 증거 수
 #                                              반환: [{id, finding_type, severity, ..., evidence_count}]

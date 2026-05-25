@@ -1,5 +1,5 @@
 # api/sessions.py
-# 역할: 수사 세션(Investigation Sessions) 관리 라우터
+# 역할: 점검 세션 관리 라우터
 #   POST  /sessions                          → 세션 생성 (query_text, case_id)
 #                                              반환: {id, status:"running"}
 #   GET   /sessions                          → 세션 목록 (limit 기본 20)
@@ -37,7 +37,9 @@ def create_session(body: SessionCreate):
 @router.get("/sessions")
 def list_sessions(limit: int = Query(20, le=100)):
     return query(
-        f"SELECT id,query_text,query_intent,status,started_at,completed_at "
+        f"SELECT id, query_text, query_intent, status, started_at, completed_at, "
+        f"report_json->>'verdict' AS verdict, "
+        f"(report_json->>'risk_score')::int AS risk_score "
         f"FROM investigation_sessions ORDER BY started_at DESC LIMIT {limit};"
     )
 
@@ -46,12 +48,33 @@ def list_sessions(limit: int = Query(20, le=100)):
 def get_session(session_id: str):
     require_uuid(session_id, "session_id")
     rows = query(
-        f"SELECT id,query_text,query_intent,status,started_at,completed_at,report_json "
+        f"SELECT id,query_text,query_intent,status,started_at,completed_at,"
+        f"report_json, agent_trace, "
+        f"report_json->>'verdict' AS verdict, "
+        f"(report_json->>'risk_score')::int AS risk_score "
         f"FROM investigation_sessions WHERE id='{session_id}';"
     )
     if not rows:
         raise HTTPException(404, "Session not found")
-    return rows[0]
+    row = rows[0]
+    # db.py는 CSV 방식으로 JSONB를 문자열로 반환한다 — 객체로 파싱해서 전달.
+    if isinstance(row.get("report_json"), str):
+        try:
+            row["report_json"] = json.loads(row["report_json"])
+        except (json.JSONDecodeError, TypeError):
+            row["report_json"] = None
+    if isinstance(row.get("agent_trace"), str):
+        try:
+            row["agent_trace"] = json.loads(row["agent_trace"])
+        except (json.JSONDecodeError, TypeError):
+            row["agent_trace"] = None
+    if row.get("verdict") is None and isinstance(row.get("report_json"), dict):
+        report = row["report_json"]
+        if isinstance(report.get("final_report"), dict):
+            report = report["final_report"]
+        row["verdict"] = report.get("verdict")
+        row["risk_score"] = report.get("risk_score")
+    return row
 
 
 @router.patch("/sessions/{session_id}/complete")

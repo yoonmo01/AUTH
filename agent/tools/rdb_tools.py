@@ -43,6 +43,7 @@ def _fetchall_as_json(cur: psycopg2.extensions.cursor) -> str:
 @tool
 def get_email_history(user_name: str, date_from: str, date_to: str) -> str:
     """email_messages 테이블에서 특정 사용자의 기간 내 이메일 이력을 조회합니다.
+    발신(sender) 및 수신(recipients_to) 모두 포함합니다.
 
     Args:
         user_name: 조회할 사용자 이름 (예: "이지수")
@@ -57,13 +58,14 @@ def get_email_history(user_name: str, date_from: str, date_to: str) -> str:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, subject, sender, recipients_to, sent_at, has_attachments
+                SELECT DISTINCT ON (subject, sender, sent_at)
+                  id, subject, sender, recipients_to, sent_at, has_attachments
                 FROM email_messages
-                WHERE sender ILIKE %s
+                WHERE (sender ILIKE %s OR recipients_to::text ILIKE %s)
                   AND sent_at BETWEEN %s AND %s
-                ORDER BY sent_at
+                ORDER BY subject, sender, sent_at
                 """,
-                (f"%{user_name}%", date_from, date_to),
+                (f"%{user_name}%", f"%{user_name}%", date_from, date_to),
             )
             return _fetchall_as_json(cur)
     finally:
@@ -87,11 +89,43 @@ def get_file_access_history(user_name: str, date_from: str, date_to: str) -> str
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, filename, full_path, run_count, last_run_at
+                SELECT DISTINCT ON (filename, user_name, last_run_at)
+                  id, filename, full_path, run_count, last_run_at
                 FROM file_access_logs
                 WHERE user_name ILIKE %s
                   AND last_run_at BETWEEN %s AND %s
-                ORDER BY last_run_at
+                ORDER BY filename, user_name, last_run_at
+                """,
+                (f"%{user_name}%", date_from, date_to),
+            )
+            return _fetchall_as_json(cur)
+    finally:
+        conn.close()
+
+
+@tool
+def get_deleted_files(user_name: str, date_from: str, date_to: str) -> str:
+    """deleted_files 테이블에서 특정 사용자의 기간 내 삭제된 파일 목록을 조회합니다 ($Recycle.Bin 기반).
+
+    Args:
+        user_name: 조회할 사용자 이름
+        date_from: 시작 날짜 (YYYY-MM-DD)
+        date_to: 종료 날짜 (YYYY-MM-DD)
+
+    Returns:
+        삭제 파일 목록 JSON 문자열 (id, original_path, original_filename, extension, file_size_bytes, deleted_at)
+    """
+    conn = get_pg_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, original_path, original_filename, extension,
+                       file_size_bytes, deleted_at
+                FROM deleted_files
+                WHERE user_name ILIKE %s
+                  AND deleted_at BETWEEN %s AND %s
+                ORDER BY deleted_at
                 """,
                 (f"%{user_name}%", date_from, date_to),
             )
@@ -125,23 +159,25 @@ def get_activity_events(
                 types_list = [t.strip() for t in event_types.split(",")]
                 cur.execute(
                     """
-                    SELECT id, event_type, event_at, actor, process_name, target_path, run_count
+                    SELECT DISTINCT ON (actor, event_type, event_at, target_path)
+                      id, event_type, event_at, actor, process_name, target_path, run_count
                     FROM activity_events
                     WHERE actor ILIKE %s
                       AND event_at BETWEEN %s AND %s
                       AND event_type = ANY(%s)
-                    ORDER BY event_at
+                    ORDER BY actor, event_type, event_at, target_path
                     """,
                     (f"%{user_name}%", date_from, date_to, types_list),
                 )
             else:
                 cur.execute(
                     """
-                    SELECT id, event_type, event_at, actor, process_name, target_path, run_count
+                    SELECT DISTINCT ON (actor, event_type, event_at, target_path)
+                      id, event_type, event_at, actor, process_name, target_path, run_count
                     FROM activity_events
                     WHERE actor ILIKE %s
                       AND event_at BETWEEN %s AND %s
-                    ORDER BY event_at
+                    ORDER BY actor, event_type, event_at, target_path
                     """,
                     (f"%{user_name}%", date_from, date_to),
                 )
@@ -166,34 +202,67 @@ def get_external_emails(user_name: str, date_from: str, date_to: str) -> str:
     Returns:
         외부 발신 이메일 목록 JSON 문자열
     """
-    # TODO: 동료 구현
-    # 힌트:
-    # SELECT id, subject, sender, recipients_to, sent_at, has_attachments, body_text
-    # FROM email_messages
-    # WHERE sender ILIKE %s
-    #   AND sent_at BETWEEN %s AND %s
-    #   AND recipients_to::text NOT ILIKE '%hb.%'
-    # ORDER BY sent_at
-    raise NotImplementedError("get_external_emails 구현 필요 — rdb_tools.py 참고")
+    conn = get_pg_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, subject, sender, recipients_to, sent_at,
+                       has_attachments, body_text
+                FROM email_messages
+                WHERE sender ILIKE %s
+                  AND sent_at BETWEEN %s AND %s
+                  AND recipients_to::text NOT ILIKE '%%hb.%%'
+                ORDER BY sent_at
+                """,
+                (f"%{user_name}%", date_from, date_to),
+            )
+            return _fetchall_as_json(cur)
+    finally:
+        conn.close()
 
 
 @tool
-def get_anonymous_channel_emails(date_from: str, date_to: str) -> str:
-    """ProtonMail, tmpbox 등 익명/일회용 채널 이메일을 조회합니다.
+def get_anonymous_channel_emails(user_name: str, date_from: str, date_to: str) -> str:
+    """ProtonMail, tmpbox 등 익명/일회용 채널 이메일을 조회합니다. (분석 대상 발신/수신 한정)
 
     Args:
+        user_name: 분석 대상 사용자 이름 (sender 또는 recipients_to에 포함된 항목만 반환)
         date_from: 시작 날짜 (YYYY-MM-DD)
         date_to: 종료 날짜 (YYYY-MM-DD)
 
     Returns:
         익명 채널 이메일 목록 JSON 문자열
     """
-    # TODO: 동료 구현
-    # 힌트:
-    # WHERE sent_at BETWEEN %s AND %s
-    #   AND (sender ILIKE '%protonmail%' OR sender ILIKE '%tmpbox%'
-    #        OR recipients_to::text ILIKE '%protonmail%' ...)
-    raise NotImplementedError("get_anonymous_channel_emails 구현 필요 — rdb_tools.py 참고")
+    conn = get_pg_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, subject, sender, recipients_to, sent_at,
+                       has_attachments, body_text
+                FROM email_messages
+                WHERE sent_at BETWEEN %s AND %s
+                  AND (sender ILIKE %s OR recipients_to::text ILIKE %s)
+                  AND (
+                    sender ILIKE '%%protonmail%%'
+                    OR sender ILIKE '%%tmpbox%%'
+                    OR sender ILIKE '%%moakt%%'
+                    OR sender ILIKE '%%guerrillamail%%'
+                    OR sender ILIKE '%%tutanota%%'
+                    OR recipients_to::text ILIKE '%%protonmail%%'
+                    OR recipients_to::text ILIKE '%%tmpbox%%'
+                    OR recipients_to::text ILIKE '%%moakt%%'
+                    OR recipients_to::text ILIKE '%%guerrillamail%%'
+                    OR recipients_to::text ILIKE '%%tutanota%%'
+                  )
+                ORDER BY sent_at
+                """,
+                (date_from, date_to, f"%{user_name}%", f"%{user_name}%"),
+            )
+            return _fetchall_as_json(cur)
+    finally:
+        conn.close()
 
 
 @tool
@@ -214,13 +283,36 @@ def get_messenger_logs(
     Returns:
         메신저 로그 목록 JSON 문자열 (id, chat_title, sender, message, sent_at)
     """
-    # TODO: 동료 구현
-    # 힌트:
-    # SELECT id, chat_title, sender, message, sent_at
-    # FROM messenger_logs
-    # WHERE user_name ILIKE %s AND sent_at BETWEEN %s AND %s
-    #   AND (keywords가 있으면 message ILIKE ANY 조건 추가)
-    raise NotImplementedError("get_messenger_logs 구현 필요 — rdb_tools.py 참고")
+    conn = get_pg_conn()
+    try:
+        with conn.cursor() as cur:
+            if keywords:
+                kw_list = [f"%{kw.strip()}%" for kw in keywords.split(",")]
+                cur.execute(
+                    """
+                    SELECT id, chat_title, sender, message, sent_at
+                    FROM messenger_logs
+                    WHERE sender ILIKE %s
+                      AND sent_at BETWEEN %s AND %s
+                      AND message ILIKE ANY(%s)
+                    ORDER BY sent_at
+                    """,
+                    (f"%{user_name}%", date_from, date_to, kw_list),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT id, chat_title, sender, message, sent_at
+                    FROM messenger_logs
+                    WHERE sender ILIKE %s
+                      AND sent_at BETWEEN %s AND %s
+                    ORDER BY sent_at
+                    """,
+                    (f"%{user_name}%", date_from, date_to),
+                )
+            return _fetchall_as_json(cur)
+    finally:
+        conn.close()
 
 
 @tool
@@ -233,9 +325,22 @@ def get_email_attachments(email_id: str) -> str:
     Returns:
         첨부파일 목록 JSON 문자열 (id, attachment_name, size_bytes, extracted_path)
     """
-    # TODO: 동료 구현
-    # 힌트:
-    # SELECT id, attachment_name, size_bytes, extracted_path
-    # FROM email_attachments
-    # WHERE email_id = %s
-    raise NotImplementedError("get_email_attachments 구현 필요 — rdb_tools.py 참고")
+    import re
+    if not re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", email_id.strip()):
+        return "[]"
+
+    conn = get_pg_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, attachment_name, size_bytes, extracted_path
+                FROM email_attachments
+                WHERE email_id = %s
+                ORDER BY attachment_name
+                """,
+                (email_id.strip(),),
+            )
+            return _fetchall_as_json(cur)
+    finally:
+        conn.close()

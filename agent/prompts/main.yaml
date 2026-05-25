@@ -1,4 +1,61 @@
-# Main Agent — 최종 수사 보고서 생성 프롬프트
+# Main Agent — Supervisor 추론 + 최종 수사 보고서 생성 프롬프트
+
+supervisor_system: |
+  당신은 디지털 포렌식 수사 총괄 에이전트입니다.
+  다음 분석 단계 에이전트에게 핵심 수사 지침을 제공합니다.
+  지침은 3문장 이내로 구체적으로 작성하세요.
+  데이터 조회 방법이 아니라 "무엇에 집중할지"를 지시하세요.
+
+step1_task: |
+  분석 대상: {subject_name} ({subject_position})
+  입사일: {hire_date} / 퇴사일: {resignation_date}
+  분석 시작: {analysis_start}
+
+  STEP 1(기준선 수립) 에이전트에게 줄 지침을 작성하세요.
+  - 이 직급에서 기준선으로 주목해야 할 행동 패턴은?
+  - 어떤 데이터 유형을 중점적으로 수집해야 하나?
+
+step2_task: |
+  분석 대상: {subject_name} ({subject_position})
+  기준선 결과: {baseline_summary}
+  분석 기간: {analysis_start} ~ {resignation_date}
+
+  STEP 2(유출 채널 탐지) 에이전트에게 줄 지침을 작성하세요.
+  - 기준선 결과를 바탕으로 어떤 이상 징후에 집중해야 하나?
+  - 이 직급/업무에서 외부 발신이 많을 수 있는 정상 이유는?
+  - 이 직급의 업무 특성상 메신저에서 탐지해야 할 민감 키워드 목록을 5개 이내로 제시하세요.
+    (이 회사는 무역회사 구매팀이며, IT·개발 직군이 아닙니다. 소스코드·DB 관련 키워드는 제외하세요.)
+
+step3_task: |
+  분석 대상: {subject_name} ({subject_position})
+  데이터 소스: {source_label}
+  기준선 결과: {baseline_summary}
+
+  STEP 3(민감 파일 분류) 에이전트에게 줄 지침을 작성하세요.
+  - 이 직급에서 취급할 가능성이 높은 민감 파일 유형은?
+  - 어떤 카테고리에 높은 가중치를 두어야 하나?
+
+step4_task: |
+  분석 대상: {subject_name} ({subject_position})
+  기준선 결과: {baseline_summary}
+  분석 기간: {analysis_start} ~ {resignation_date}
+
+  STEP 4(행동 패턴 분석) 에이전트에게 줄 지침을 작성하세요.
+  - 기준선 대비 이상 행동(파일 삭제·대용량 처리·비정상 접근)에서 집중해야 할 포인트는?
+  - 이 직급에서 업무상 파일 삭제나 대량 접근이 정상적일 수 있는 이유는?
+  - 특히 주목해야 할 날짜·시간대가 있다면 명시하세요.
+
+step5_task: |
+  분석 대상: {subject_name}
+  교차 대조 결과: {cross_reference_summary}
+  의심 채널 수: {suspicious_count} / 민감 파일 수: {sensitive_count}
+  삭제 파일 주장 수: {deleted_files_count}
+
+  STEP 5(사실 검증) 에이전트에게 줄 지침을 작성하세요.
+  - STEP 2~4의 어떤 주장을 우선적으로 DB에서 재확인해야 하는가?
+  - 할루시네이션이 발생할 가능성이 높은 항목은?
+
+
 
 system: |
   당신은 디지털 포렌식 전문가입니다.
@@ -19,9 +76,12 @@ system: |
 report_task: |
   아래 분석 결과를 바탕으로 최종 수사 보고서를 JSON으로 작성하세요.
   판정: {verdict} / 리스크 점수: {risk_score}
+  리스크 항목별 점수: {risk_breakdown}
 
   수집된 결과:
   - 기준선 프로필: {baseline_profile}
+  - 유출 의심 채널 목록: {suspicious_channels}
+  - 민감 파일 목록: {sensitive_files}
   - 교차 대조 결과: {cross_reference}
   - 검증된 의심 항목: {verified_findings}
   - 행동 이상 패턴: {behavior_anomalies}
@@ -30,15 +90,22 @@ report_task: |
   나머지(HIGH/MEDIUM/LOW)는 "EXFILTRATION_SUSPECTED"로 작성하세요.
   JSON 블록 외 다른 설명은 포함하지 마세요.
 
+  CLEAN일 때 규칙:
+  - summary는 반드시 "분석 기간 내 데이터 유출 의심 행위가 발견되지 않음"으로만 작성할 것
+  - "위험 신호", "잠재적 위험", "저강도" 등의 표현 사용 금지
+  - suspicious_channels에 항목이 있더라도 판정이 CLEAN이면 위 summary를 그대로 사용할 것
+  - analysis_summary의 모든 수치는 반드시 0으로 고정할 것 (추측값 입력 금지)
+
   CLEAN일 때 형식:
   ```json
   {{
     "report_type": "CLEAN_CERTIFICATE",
     "verdict": "{verdict}",
     "risk_score": {risk_score},
+    "risk_breakdown": {risk_breakdown},
     "subject": {{"name": "{subject_name}", "position": "{subject_position}", "hire_date": "{hire_date}", "resignation_date": "{resignation_date}"}},
     "summary": "분석 기간 내 데이터 유출 의심 행위가 발견되지 않음",
-    "analysis_summary": {{"emails_analyzed": 0, "files_analyzed": 0, "anomalies_found": 0, "false_positives_removed": 0}},
+    "analysis_summary": {{"emails_analyzed": {emails_analyzed}, "files_analyzed": {files_analyzed}, "anomalies_found": {anomalies_found}, "false_positives_removed": {false_positives_removed}}},
     "issued_at": "ISO8601 현재 시각"
   }}
   ```
@@ -49,12 +116,41 @@ report_task: |
     "report_type": "EXFILTRATION_SUSPECTED",
     "verdict": "{verdict}",
     "risk_score": {risk_score},
+    "risk_breakdown": {risk_breakdown},
     "subject": {{"name": "{subject_name}", "position": "{subject_position}", "hire_date": "{hire_date}", "resignation_date": "{resignation_date}"}},
     "summary": "요약 문장",
-    "suspicious_emails": [],
-    "suspicious_files": [],
-    "deleted_files": [],
+    "suspicious_emails": [
+      {{
+        "email_id": "uuid",
+        "channel_type": "채널 유형",
+        "sender": "발신자",
+        "recipient": "수신자",
+        "subject": "제목",
+        "sent_at": "ISO8601",
+        "has_attachment": false,
+        "suspicion_reason": "의심 사유",
+        "risk_weight": 0
+      }}
+    ],
+    "suspicious_files": [
+      {{
+        "file_id": "uuid",
+        "filename": "파일명",
+        "relative_path": "경로",
+        "sensitivity_score": 0.0,
+        "sensitivity_category": "카테고리",
+        "matched_keywords": []
+      }}
+    ],
+    "behavior_summary": {{}},
     "timeline": [],
-    "evidence_network": {{"nodes": [], "edges": []}}
+    "evidence_network": {{
+      "nodes": [
+        {{"id": "node_id", "type": "USER|FILE|EMAIL|CHANNEL|LOG", "label": "표시명"}}
+      ],
+      "edges": [
+        {{"source": "node_id", "target": "node_id", "relation": "ACCESSED|ATTACHED|SENT_TO|DELETED"}}
+      ]
+    }}
   }}
   ```

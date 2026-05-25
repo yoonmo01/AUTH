@@ -1,22 +1,13 @@
 """
 agent/nodes/sensitive_files.py
-STEP 3 — 민감 파일 분류 Sub-Agent (뼈대)
-담당: 동료
+STEP 3 — 민감 파일 분류 Sub-Agent
 
-구현 순서:
-  1. agent/tools/vector_tools.py 의 TODO 함수 구현
-       - search_vector_db
-       - get_chunk_by_file
-  2. agent/tools/graph_tools.py 의 TODO 함수 구현
-       - get_files_by_entity
-       - get_file_metadata
-  3. 이 파일의 sensitive_files_node() 아래 TODO 블록 구현
-
-Input (state에서 읽음):
+Input (task dict):
   - subject_name: str
   - source_label: str
+  - supervisor_instructions: str  ← Main Agent 수사 지침
 
-Output (state에 저장):
+Output:
   - sensitive_files: list
     [
       {
@@ -41,35 +32,48 @@ from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 
 from agent.prompts import load_prompt
-from agent.state import InvestigationState
-
-# TODO: 아래 import 주석 해제 후 사용 (vector_tools.py, graph_tools.py 구현 완료 후)
-# from agent.tools.vector_tools import search_vector_db, get_chunk_by_file
-# from agent.tools.graph_tools import get_files_by_entity, get_file_metadata
+from agent.tools.vector_tools import search_vector_db, get_chunk_by_file
+from agent.tools.graph_tools import get_files_by_entity, get_file_metadata
 
 
-def sensitive_files_node(state: InvestigationState) -> dict:
-    """STEP 3: 민감 파일 분류 Sub-Agent 노드."""
+def sensitive_files_node(task: dict) -> dict:
+    """STEP 3: 민감 파일 분류 Sub-Agent 노드. Main Agent로부터 task dict를 수신한다."""
+    prompt = load_prompt("sensitive_files")
 
-    # TODO: 아래 블록 구현
-    # prompt = load_prompt("sensitive_files")
-    # ctx = {
-    #     "subject_name": state["subject_name"],
-    #     "source_label": state["source_label"],
-    # }
-    # llm = ChatOpenAI(model=os.getenv("AGENT_MODEL", "gpt-5.1"), temperature=0)
-    # tools = [search_vector_db, get_chunk_by_file, get_files_by_entity, get_file_metadata]
-    # agent = create_agent(
-    #     llm, tools,
-    #     system_prompt=prompt["system"].format(**ctx),
-    # )
-    # result = agent.invoke({"messages": [("user", prompt["task"].format(**ctx))]})
-    # raw = result["messages"][-1].content
-    # sensitive_files = _parse_json_list(raw)
-    # return {"sensitive_files": sensitive_files}
+    ctx = {
+        "subject_name": task["subject_name"],
+        "source_label": task["source_label"],
+        "supervisor_instructions": task.get("supervisor_instructions", ""),
+    }
 
-    # 뼈대: vector_tools.py, graph_tools.py 구현 완료 전까지 빈 결과 반환
-    return {"sensitive_files": []}
+    try:
+        from agent.run import agent_logger
+        callbacks = [agent_logger]
+    except ImportError:
+        callbacks = []
+
+    print(f"\n  [STEP 3 시작] {task['subject_name']} 민감 파일 분류 중...")
+
+    llm = ChatOpenAI(
+        model=os.getenv("AGENT_MODEL", "gpt-5.1"),
+        temperature=0,
+        callbacks=callbacks,
+    )
+    tools = [search_vector_db, get_chunk_by_file, get_files_by_entity, get_file_metadata]
+
+    agent = create_agent(
+        llm,
+        tools,
+        system_prompt=prompt["system"].format(**ctx),
+    )
+
+    result = agent.invoke(
+        {"messages": [("user", prompt["task"].format(**ctx))]},
+        config={"callbacks": callbacks},
+    )
+
+    raw = result["messages"][-1].content
+    return {"sensitive_files": _parse_json_list(raw)}
 
 
 def _parse_json_list(text: str) -> list:
