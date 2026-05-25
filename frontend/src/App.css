@@ -3157,6 +3157,57 @@ select.iform__input {
     overflow: visible !important;
   }
 
+  /* ── 관리자 상세분석 화면 인쇄 처리 ── */
+
+  /* 헤더·탭·소명패널·의심항목 목록 숨김 */
+  .adetail__hdr,
+  .adetail-analysis__side {
+    display: none !important;
+  }
+
+  /* adetail 레이아웃 해제 */
+  .adetail,
+  .adetail__body,
+  .adetail__body--console,
+  .adetail__analysis {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  /* adetail-analysis 그리드 → 단일 컬럼 */
+  .adetail-analysis {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  /* 우측 분석 패널이 전체 너비로 */
+  .adetail-analysis__right,
+  .adetail-analysis__panel {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  /* ContentViewer 탭바·버튼 숨김 */
+  .cv__tabbar,
+  .cv__tabs {
+    display: none !important;
+  }
+  .cv__body {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
   /* keep verdict badge / severity colours in the printout */
   * {
     -webkit-print-color-adjust: exact !important;
