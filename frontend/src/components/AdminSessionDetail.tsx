@@ -101,7 +101,7 @@ export function AdminSessionDetail({ sessionId, onBack }: Props) {
             상세 분석
           </button>
         </nav>
-        {tab === 'report' && entry && (
+        {entry && (
           <div className="adetail__hdr-review">
             {reviewed ? (
               <span className="adetail__reviewed">
