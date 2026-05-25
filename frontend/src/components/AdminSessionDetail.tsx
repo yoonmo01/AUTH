@@ -137,7 +137,7 @@ export function AdminSessionDetail({ sessionId, onBack }: Props) {
         <footer className="adetail__review">
           {reviewed ? (
             <span className="adetail__reviewed">
-              검토완료 {formatReviewedAt(entry.reviewed_at)}
+              검토 완료 {formatReviewedAt(entry.reviewed_at)}
             </span>
           ) : (
             <button

@@ -41,9 +41,9 @@ function ExplanationPanel({ text }: { text: string | null }) {
 
   return (
     <section className="adetail-analysis__panel adetail-analysis__explain" aria-label="직원 소명">
-      {/* <header className="adetail-analysis__head">
+      <header className="adetail-analysis__head">
         <h2 className="adetail-analysis__title">직원 소명</h2>
-      </header> */}
+      </header>
       <div className="adetail-analysis__explain-body">
         {trimmed ? (
           <p className="adetail-analysis__explain-text">{trimmed}</p>

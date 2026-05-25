@@ -14,7 +14,7 @@ type ExplanationFilter = 'all' | 'required' | 'not-required'
 const FILTERS: { key: Filter; label: string }[] = [
   { key: 'all', label: '전체' },
   { key: 'submitted', label: '미검토' },
-  { key: 'reviewed', label: '검토완료' },
+  { key: 'reviewed', label: '검토 완료' },
 ]
 
 const EXPLANATION_FILTERS: { key: ExplanationFilter; label: string }[] = [
@@ -32,7 +32,7 @@ const VERDICT_LABELS: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   submitted: '미검토',
-  reviewed: '검토완료',
+  reviewed: '검토 완료',
 }
 
 function verdictLabel(verdict: string | null | undefined): string {

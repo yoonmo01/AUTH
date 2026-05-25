@@ -182,116 +182,124 @@ export function EmployeeReport({
 
   return (
     <div className="erpt">
-      <div className="erpt__header">
-        <p className="erpt__sub">{quarter} 정기 점검 결과</p>
-        <h1 className="erpt__name">{employeeName}</h1>
-      </div>
+      <div className="erpt__layout">
+        {/* ── 왼쪽: 헤더 + 안내 + 발견 항목 ── */}
+        <div className="erpt__main">
+          <div className="erpt__header">
+            <p className="erpt__sub">{quarter} 정기 점검 결과</p>
+            <h1 className="erpt__name">{employeeName}</h1>
+          </div>
 
-      <div className="erpt__verdict-row">
-        <span className={`erpt__badge ${badge.cls}`}>{badge.label}</span>
-      </div>
+          <div className="erpt__verdict-row">
+            <span className={`erpt__badge ${badge.cls}`}>{badge.label}</span>
+          </div>
 
-      <div className="erpt__guide">
-        <ul className="erpt__guide-list">
-          <li>정기 점검에서 자동으로 확인된 활동 목록입니다.</li>
-          <li>각 항목은 문제가 아닌, <strong>확인이 필요한</strong> 활동입니다.</li>
-          <li>'내용 보기' 버튼으로 해당 자료를 직접 확인할 수 있습니다.</li>
-          <li>아래 입력란에 각 항목에 대한 설명을 작성해주세요.</li>
-          <li>항목 번호를 함께 적으시면 검토에 도움이 됩니다.</li>
-        </ul>
-      </div>
+          <div className="erpt__guide">
+            <ul className="erpt__guide-list">
+              <li>정기 점검에서 자동으로 확인된 활동 목록입니다.</li>
+              <li>각 항목은 문제가 아닌, <strong>확인이 필요한</strong> 활동입니다.</li>
+              <li>'내용 보기' 버튼으로 해당 자료를 직접 확인할 수 있습니다.</li>
+              <li>오른쪽 입력란에 각 항목에 대한 설명을 작성해주세요.</li>
+              <li>항목 번호를 함께 적으시면 검토에 도움이 됩니다.</li>
+            </ul>
+          </div>
 
-      <div className="erpt__findings">
-        <h2 className="erpt__findings-title">확인이 필요한 항목</h2>
-        {displayFindings.length === 0 ? (
-          <p className="erpt__empty">특이 사항이 발견되지 않았습니다.</p>
-        ) : (
-          displayFindings.map((f, i) => (
-            <div key={f.id} className="erpt__item">
-              <p className="erpt__item-title">
-                <span className="erpt__item-num">{i + 1}.</span>
-                {f.what}
+          <div className="erpt__findings">
+            <h2 className="erpt__findings-title">확인이 필요한 항목</h2>
+            {displayFindings.length === 0 ? (
+              <p className="erpt__empty">특이 사항이 발견되지 않았습니다.</p>
+            ) : (
+              displayFindings.map((f, i) => (
+                <div key={f.id} className="erpt__item">
+                  <p className="erpt__item-title">
+                    <span className="erpt__item-num">{i + 1}.</span>
+                    {f.what}
+                  </p>
+
+                  <ul className="erpt__item-facts">
+                    {f.detail && <li>{f.detail}</li>}
+                    <li>{f.whyCheck}</li>
+                  </ul>
+
+                  {f.view?.kind === 'file' && (
+                    <div className="erpt__item-actions">
+                      <button
+                        type="button"
+                        className="erpt__view-btn"
+                        onClick={() => setViewingFile(f.view!.data as SuspiciousFile)}
+                      >
+                        파일 내용 보기
+                      </button>
+                    </div>
+                  )}
+                  {f.view?.kind === 'email' && (
+                    <div className="erpt__item-actions">
+                      <button
+                        type="button"
+                        className="erpt__view-btn"
+                        onClick={() => setViewingEmail(f.view!.data as SuspiciousEmail)}
+                      >
+                        메일 내용 보기
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* ── 오른쪽: 소명 패널 (sticky) ── */}
+        <aside className="erpt__side">
+          {!readOnly && explanationRequired && (
+            <div className="erpt__explain">
+              <p className="erpt__explain-title">소명 작성</p>
+              <p className="erpt__explain-desc">
+                위 항목 중 해당되는 내용에 대해 업무상 사정이나 이유를 작성해주세요.
+                항목 번호를 함께 적어주시면 검토에 도움이 됩니다.
               </p>
-
-              <ul className="erpt__item-facts">
-                {f.detail && <li>{f.detail}</li>}
-                <li>{f.whyCheck}</li>
-              </ul>
-
-              {f.view?.kind === 'file' && (
-                <div className="erpt__item-actions">
-                  <button
-                    type="button"
-                    className="erpt__view-btn"
-                    onClick={() => setViewingFile(f.view!.data as SuspiciousFile)}
-                  >
-                    파일 내용 보기
-                  </button>
-                </div>
-              )}
-              {f.view?.kind === 'email' && (
-                <div className="erpt__item-actions">
-                  <button
-                    type="button"
-                    className="erpt__view-btn"
-                    onClick={() => setViewingEmail(f.view!.data as SuspiciousEmail)}
-                  >
-                    메일 내용 보기
-                  </button>
-                </div>
-              )}
+              <textarea
+                className="erpt__explain-area"
+                rows={8}
+                value={explanationInput}
+                onChange={(e) => setExplanationInput(e.target.value)}
+                placeholder="예) 1번은 거래처 A사와 정기적으로 공유하는 보고서입니다. 2번은 …"
+              />
+              {submitError && <p className="erpt__err">{submitError}</p>}
+              <button
+                className="erpt__submit-btn"
+                disabled={explanationInput.trim().length < 5 || submitting}
+                onClick={handleSubmit}
+              >
+                {submitting ? '제출 중...' : '제출하기'}
+              </button>
             </div>
-          ))
-        )}
+          )}
+
+          {!readOnly && !explanationRequired && (
+            <div className="erpt__explain erpt__explain--skip">
+              <p className="erpt__explain-desc">
+                확인이 필요한 추가 항목이 없습니다. 아래 버튼을 눌러 점검을 마무리해주세요.
+              </p>
+              {submitError && <p className="erpt__err">{submitError}</p>}
+              <button
+                className="erpt__submit-btn"
+                disabled={submitting}
+                onClick={handleSkipExplanation}
+              >
+                {submitting ? '처리 중...' : '확인 완료'}
+              </button>
+            </div>
+          )}
+
+          {readOnly && explanationText && (
+            <div className="erpt__explain">
+              <p className="erpt__explain-title">직원 소명</p>
+              <p className="erpt__explain-text">{explanationText}</p>
+            </div>
+          )}
+        </aside>
       </div>
-
-      {!readOnly && explanationRequired && (
-        <div className="erpt__explain">
-          <p className="erpt__explain-title">소명 작성</p>
-          <p className="erpt__explain-desc">
-            위 항목 중 해당되는 내용에 대해 업무상 사정이나 이유를 작성해주세요.
-            항목 번호를 함께 적어주시면 검토에 도움이 됩니다.
-          </p>
-          <textarea
-            className="erpt__explain-area"
-            rows={8}
-            value={explanationInput}
-            onChange={(e) => setExplanationInput(e.target.value)}
-            placeholder="예) 1번은 거래처 A사와 정기적으로 공유하는 보고서입니다. 2번은 …"
-          />
-          {submitError && <p className="erpt__err">{submitError}</p>}
-          <button
-            className="erpt__submit-btn"
-            disabled={explanationInput.trim().length < 5 || submitting}
-            onClick={handleSubmit}
-          >
-            {submitting ? '제출 중...' : '제출하기'}
-          </button>
-        </div>
-      )}
-
-      {!readOnly && !explanationRequired && (
-        <div className="erpt__explain erpt__explain--skip">
-          <p className="erpt__explain-desc">
-            확인이 필요한 추가 항목이 없습니다. 아래 버튼을 눌러 점검을 마무리해주세요.
-          </p>
-          {submitError && <p className="erpt__err">{submitError}</p>}
-          <button
-            className="erpt__submit-btn"
-            disabled={submitting}
-            onClick={handleSkipExplanation}
-          >
-            {submitting ? '처리 중...' : '확인 완료'}
-          </button>
-        </div>
-      )}
-
-      {readOnly && explanationText && (
-        <div className="erpt__explain">
-          <p className="erpt__explain-title">직원 소명</p>
-          <p className="erpt__explain-text">{explanationText}</p>
-        </div>
-      )}
 
       {viewingFile && (
         <FileBodyModal
