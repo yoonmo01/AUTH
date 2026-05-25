@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { runAgentAnalysis } from '../api/client'
+import { resolveApiBase } from '../api/apiBase'
+
+const BASE = resolveApiBase(import.meta.env.DEV)
 
 type Props = {
   sessionId: string
@@ -59,7 +62,7 @@ export function LoadingPhase({ sessionId, name, position, onDone }: Props) {
       sessionId,
     })
       .then(({ session_id }) => {
-        const es = new EventSource(`/api/agent/events/${session_id}`)
+        const es = new EventSource(`${BASE}/agent/events/${session_id}`)
 
         es.onmessage = (e) => {
           let ev: Record<string, string>
