@@ -223,6 +223,9 @@ converted_documents/
 *.zip
 .mcp.json
 
+# LangGraph Studio 런타임 캐시 (langgraph dev 실행 시 자동 생성)
+.langgraph_api/
+
 # Node.js / Frontend
 node_modules/
 frontend/node_modules/
@@ -246,3 +249,9 @@ pgdata_new.tar.gz
 qdrantdata_new.tar.gz
 skills-lock.json
 dist_electron
+
+/docs
+
+# 발표용 ETL 실행 데모 (실제 파이프라인은 etl/ 패키지)
+# 루트 앵커(/) 필수 — etl/ 안의 파일과 이름이 겹치지 않게
+/etl.py

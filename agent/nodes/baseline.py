@@ -21,6 +21,7 @@ from agent.tools.rdb_tools import (
     get_email_history,
     get_file_access_history,
 )
+from agent.logging_utils import get_agent_callbacks
 
 
 def baseline_node(task: dict) -> dict:
@@ -39,12 +40,7 @@ def baseline_node(task: dict) -> dict:
         "supervisor_instructions": task.get("supervisor_instructions", ""),
     }
 
-    # run.py에서 AgentLogger 콜백이 주입된 경우 사용 (없으면 콜백 없이 실행)
-    try:
-        from agent.run import agent_logger
-        callbacks = [agent_logger]
-    except ImportError:
-        callbacks = []
+    callbacks = get_agent_callbacks()
 
     print(f"\n  [STEP 1 시작] {task['subject_name']} 기준선 수립 중...")
 

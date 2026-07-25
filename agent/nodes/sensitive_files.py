@@ -34,6 +34,7 @@ from langchain_openai import ChatOpenAI
 from agent.prompts import load_prompt
 from agent.tools.vector_tools import search_vector_db, get_chunk_by_file
 from agent.tools.graph_tools import get_files_by_entity, get_file_metadata
+from agent.logging_utils import get_agent_callbacks
 
 
 def sensitive_files_node(task: dict) -> dict:
@@ -46,11 +47,7 @@ def sensitive_files_node(task: dict) -> dict:
         "supervisor_instructions": task.get("supervisor_instructions", ""),
     }
 
-    try:
-        from agent.run import agent_logger
-        callbacks = [agent_logger]
-    except ImportError:
-        callbacks = []
+    callbacks = get_agent_callbacks()
 
     print(f"\n  [STEP 3 시작] {task['subject_name']} 민감 파일 분류 중...")
 

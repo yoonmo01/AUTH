@@ -21,6 +21,7 @@ from agent.tools.rdb_tools import (
     get_file_access_history,
     get_messenger_logs,
 )
+from agent.logging_utils import get_agent_callbacks
 
 
 def behavior_node(task: dict) -> dict:
@@ -35,11 +36,7 @@ def behavior_node(task: dict) -> dict:
         "supervisor_instructions": task.get("supervisor_instructions", ""),
     }
 
-    try:
-        from agent.run import agent_logger
-        callbacks = [agent_logger]
-    except ImportError:
-        callbacks = []
+    callbacks = get_agent_callbacks()
 
     print(f"\n  [STEP 4 시작] {task['subject_name']} 행동 패턴 분석 중...")
 

@@ -1,5 +1,10 @@
-from typing import Optional, TypedDict
+from typing import Annotated, Optional, TypedDict
 from datetime import datetime, timedelta
+
+
+def _merge_dict(a: dict, b: dict) -> dict:
+    """병렬 노드에서 동시에 supervisor_context를 업데이트할 때 충돌 없이 병합한다."""
+    return {**a, **b}
 
 
 class InvestigationState(TypedDict):
@@ -23,7 +28,8 @@ class InvestigationState(TypedDict):
     risk_breakdown: dict
     verdict: str
     final_report: dict
-    supervisor_context: dict
+    # Annotated reducer: step2/3/4 가 동시에 쓸 때 dict 를 병합함
+    supervisor_context: Annotated[dict, _merge_dict]
 
 
 def make_initial_state(

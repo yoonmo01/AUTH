@@ -19,6 +19,7 @@ from api.db import execute
 from api.models import esc
 from api.progress import cleanup, emit, get_queue, register
 from agent.graph import build_graph
+from agent.logging_utils import configure_agent_logging, log_block
 from agent.state import make_initial_state
 from agent.tools.rdb_tools import get_pg_conn
 
@@ -66,8 +67,14 @@ def _get_analysis_start(user_name: str) -> str:
 
 
 def _run_agent_thread(session_id: str, body: AgentRunRequest) -> None:
-    """백그라운드 스레드에서 LangGraph 파이프라인을 실행하고 결과를 DB에 저장한다."""
-    try:
+    """백그라운드 스레드에서 LangGraph 파이프라인을 실행하고 결과를 DB에 저장한다.
+    step2/3/4 가 async 노드이므로 asyncio.run() 으로 실행한다.
+    """
+    configure_agent_logging()
+    body_payload = body.model_dump() if hasattr(body, "model_dump") else body.dict()
+    log_block("AgentRunStart", {"session_id": session_id, "request": body_payload})
+
+    async def _ainvoke():
         analysis_start = _get_analysis_start(body.subject_name)
         graph = build_graph()
         initial_state = make_initial_state(
@@ -79,12 +86,16 @@ def _run_agent_thread(session_id: str, body: AgentRunRequest) -> None:
             analysis_start=analysis_start,
             session_id=session_id,
         )
+        log_block("InitialState", initial_state)
+        return await graph.ainvoke(initial_state), initial_state
 
-        result = graph.invoke(initial_state)
+    try:
+        result, initial_state = asyncio.run(_ainvoke())
 
         final_report = result.get("final_report", {})
         verdict = result.get("verdict", "UNKNOWN")
         risk_score = result.get("risk_score", 0)
+        log_block("AgentRunResult", result)
 
         agent_trace = {
             "baseline_profile":   result.get("baseline_profile", {}),
@@ -96,6 +107,8 @@ def _run_agent_thread(session_id: str, body: AgentRunRequest) -> None:
             "subject_name":       initial_state["subject_name"],
             "subject_position":   initial_state["subject_position"],
         }
+        log_block("AgentTrace", agent_trace)
+        log_block("FinalReport", final_report)
 
         report_sql = esc(json.dumps(final_report, ensure_ascii=False))
         trace_sql  = esc(json.dumps(agent_trace, ensure_ascii=False))
@@ -114,6 +127,7 @@ def _run_agent_thread(session_id: str, body: AgentRunRequest) -> None:
         })
 
     except Exception as e:
+        log_block("AgentRunError", {"session_id": session_id, "error": str(e)})
         execute(f"UPDATE investigation_sessions SET status='error' WHERE id='{session_id}';")
         emit(session_id, {"event": "error", "message": str(e)})
 

@@ -12,17 +12,9 @@ agent/run.py
   python agent/run.py 2        # 강수민
   python agent/run.py 3        # 장국주
 """
-import io
 import json
-import logging
 import sys
 from pathlib import Path
-
-# ─── 로그 출력 ON/OFF ───────────────────────────────────────
-VERBOSE = True   # False로 바꾸면 Tool 입출력 로그 꺼짐
-# ────────────────────────────────────────────────────────────
-
-logger = logging.getLogger("agent.orchestrator")
 
 from dotenv import load_dotenv
 
@@ -31,17 +23,11 @@ sys.path.insert(0, str(ROOT))
 
 load_dotenv(ROOT / ".env")
 
-if __name__ == "__main__":
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-    logging.basicConfig(
-        level=logging.INFO,
-        format="[INFO] %(asctime)s %(name)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        stream=sys.stdout,
-    )
+from agent.logging_utils import configure_agent_logging, log_block
 
-from langchain_core.callbacks import BaseCallbackHandler
-from langchain_core.outputs import LLMResult
+if __name__ == "__main__":
+    configure_agent_logging()
+
 from agent.graph import build_graph
 from agent.state import make_initial_state
 from agent.tools.rdb_tools import get_pg_conn
@@ -111,53 +97,10 @@ def get_analysis_start(user_name: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# 콜백 핸들러
-# ---------------------------------------------------------------------------
-
-class AgentLogger(BaseCallbackHandler):
-    """에이전트 사고 과정을 콘솔에 출력하는 콜백 핸들러."""
-
-    def on_llm_start(self, serialized, prompts, **kwargs):
-        pass
-
-    def on_llm_end(self, response: LLMResult, **kwargs):
-        pass
-
-    def on_agent_action(self, _action, **kwargs):
-        # create_agent(function calling 방식)에서는 호출되지 않음
-        pass
-
-    def on_tool_start(self, serialized, input_str, **kwargs):
-        if not VERBOSE:
-            return
-        tool_name = serialized.get("name", "unknown")
-        logger.info(f"[ToolCall] Tool={tool_name} | Input={str(input_str)[:200]}")
-
-    def on_tool_end(self, output, **kwargs):
-        if not VERBOSE:
-            return
-        raw = getattr(output, "content", None) or str(output)
-        preview = str(raw)[:300]
-        logger.info(f"[ToolResult] Output={preview}{'...' if len(str(raw)) > 300 else ''}")
-
-    def on_agent_finish(self, finish, **kwargs):
-        if not VERBOSE:
-            return
-        output = str(finish.return_values.get("output", ""))[:300]
-        logger.info(f"[AgentFinish] {output}")
-
-    def on_chat_model_start(self, serialized, messages, **kwargs):
-        pass
-
-
-agent_logger = AgentLogger()
-
-
-# ---------------------------------------------------------------------------
 # 메인
 # ---------------------------------------------------------------------------
 
-def main():
+async def main():
     # CLI 인자: python agent/run.py [1|2|3]
     subject_key = sys.argv[1] if len(sys.argv) > 1 else "1"
     if subject_key not in SUBJECTS:
@@ -185,18 +128,21 @@ def main():
     print(f"  (DB 실제 데이터 시작일 기준)")
     print("=" * 60)
     print("분석 시작...\n")
+    log_block("InitialState", initial_state)
 
     NODE_LABELS = {
-        "step1": "STEP 1 Baseline",
-        "parallel": "STEP 2/3/4 병렬",
+        "step1":     "STEP 1 Baseline",
+        "step2":     "STEP 2 유출 채널 탐지",
+        "step3":     "STEP 3 민감 파일 분류",
+        "step4":     "STEP 4 행동 패턴 분석",
         "cross_ref": "교차 대조",
-        "step5": "STEP 5 Counter-evidence",
-        "scoring": "리스크 스코어링",
-        "report": "최종 리포트 생성",
+        "step5":     "STEP 5 Counter-evidence",
+        "scoring":   "리스크 스코어링",
+        "report":    "최종 리포트 생성",
     }
 
     result = None
-    for event in graph.stream(initial_state, stream_mode="updates"):
+    async for event in graph.astream(initial_state, stream_mode="updates"):
         for node_name, update in event.items():
             label = NODE_LABELS.get(node_name, node_name)
             changed_keys = list(update.keys()) if isinstance(update, dict) else []
@@ -216,15 +162,28 @@ def main():
     print("\n[STEP 2] 유출 의심 채널")
     print(json.dumps(result.get("suspicious_channels", []), ensure_ascii=False, indent=2))
 
+    print("\n[STEP 3] 민감 파일")
+    print(json.dumps(result.get("sensitive_files", []), ensure_ascii=False, indent=2))
+
+    print("\n[STEP 4] 행동 패턴 이상")
+    print(json.dumps(result.get("behavior_anomalies", {}), ensure_ascii=False, indent=2))
+
     print("\n[교차 대조 결과]")
     print(json.dumps(result.get("cross_reference", []), ensure_ascii=False, indent=2))
 
     print("\n[STEP 5] 검증된 의심 항목")
     print(json.dumps(result.get("verified_findings", []), ensure_ascii=False, indent=2))
 
+    print("\n[리스크 산정]")
+    print(json.dumps(result.get("risk_breakdown", {}), ensure_ascii=False, indent=2))
+
+    print("\n[Main Agent 수사 지침]")
+    print(json.dumps(result.get("supervisor_context", {}), ensure_ascii=False, indent=2))
+
     print("\n[최종 리포트]")
     print(json.dumps(result.get("final_report", {}), ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
-    main()
+    import asyncio as _asyncio
+    _asyncio.run(main())

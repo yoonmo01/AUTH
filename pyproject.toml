@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hyena-auth-agent"
+version = "0.1.0"
+description = "HYENA AUTH Multi-Agent Investigation System"
+requires-python = ">=3.10"
+
+[tool.setuptools]
+packages = [
+  "agent",
+  "agent.nodes",
+  "agent.tools",
+  "agent.prompts",
+  "api",
+  "etl",
+  "etl.stages",
+  "etl.extractors",
+  "etl.converters",
+]

@@ -7,10 +7,10 @@ Sub-Agent 실행 순서:
   STEP 1 → STEP 2/3/4(병렬) → 교차 대조(코드) → STEP 5(플레이스홀더)
   → 리스크 스코어링(코드) → 최종 리포트(LLM 1회)
 """
+import asyncio
 import json
 import os
 import re
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
@@ -22,6 +22,7 @@ from agent.nodes.exfiltration import exfiltration_node
 from agent.nodes.sensitive_files import sensitive_files_node
 from agent.prompts import load_prompt
 from agent.state import InvestigationState
+from agent.logging_utils import log_block
 
 
 # ---------------------------------------------------------------------------
@@ -144,12 +145,12 @@ def step1_node(state: InvestigationState) -> dict:
         "resignation_date": state["resignation_date"],
         "analysis_start": state["analysis_start"],
     }
-    print(f"\n  [Main Agent] STEP 1 수사 지침 추론 중...")
+    print(f"\n  [Main Agent] STEP 1 수사 지침 추론 중...", flush=True)
     instructions = _supervisor_reason(
         system_prompt=main_prompt["supervisor_system"],
         user_prompt=main_prompt["step1_task"].format(**ctx),
     )
-    print(f"  [Main Agent → STEP 1] {instructions[:80]}...")
+    log_block("Main Agent -> STEP 1 Instructions", instructions)
 
     task = {
         "task": "baseline_profile 수립",
@@ -165,13 +166,11 @@ def step1_node(state: InvestigationState) -> dict:
     return result
 
 
-def parallel_node(state: InvestigationState) -> dict:
-    """STEP 2 / STEP 3 / STEP 4 병렬 실행.
-    Main Agent가 baseline 결과를 보고 각 Sub-Agent에 줄 지침을 추론한 뒤 task로 전달한다.
-    """
+async def step2_node(state: InvestigationState) -> dict:
+    """STEP 2 유출 채널 탐지 — Supervisor 추론 후 exfiltration_node 실행."""
     main_prompt = load_prompt("main")
     baseline = state.get("baseline_profile", {})
-    ctx_common = {
+    ctx = {
         "subject_name": state["subject_name"],
         "subject_position": state["subject_position"],
         "baseline_summary": json.dumps(baseline, ensure_ascii=False),
@@ -179,67 +178,89 @@ def parallel_node(state: InvestigationState) -> dict:
         "resignation_date": state["resignation_date"],
         "source_label": state["source_label"],
     }
+    print(f"\n  [Main Agent] STEP 2 수사 지침 추론 중...", flush=True)
+    instructions = await asyncio.to_thread(
+        _supervisor_reason,
+        main_prompt["supervisor_system"],
+        main_prompt["step2_task"].format(**ctx),
+    )
+    log_block("Main Agent -> STEP 2 Instructions", instructions)
 
-    print(f"\n  [Main Agent] STEP 2/3/4 수사 지침 추론 중 (병렬)...")
-    with ThreadPoolExecutor(max_workers=3) as pre:
-        f2 = pre.submit(_supervisor_reason,
-                        main_prompt["supervisor_system"],
-                        main_prompt["step2_task"].format(**ctx_common))
-        f3 = pre.submit(_supervisor_reason,
-                        main_prompt["supervisor_system"],
-                        main_prompt["step3_task"].format(**ctx_common))
-        f4 = pre.submit(_supervisor_reason,
-                        main_prompt["supervisor_system"],
-                        main_prompt["step4_task"].format(**ctx_common))
-    instructions_step2 = f2.result()
-    instructions_step3 = f3.result()
-    instructions_step4 = f4.result()
-    print(f"  [Main Agent → STEP 2] {instructions_step2[:80]}...")
-    print(f"  [Main Agent → STEP 3] {instructions_step3[:80]}...")
-    print(f"  [Main Agent → STEP 4] {instructions_step4[:80]}...")
-
-    task2 = {
+    task = {
         "task": "유출 채널 탐지",
         "subject_name": state["subject_name"],
         "baseline_profile": baseline,
         "analysis_start": state["analysis_start"],
         "resignation_date": state["resignation_date"],
-        "supervisor_instructions": instructions_step2,
+        "supervisor_instructions": instructions,
     }
-    task3 = {
+    result = await asyncio.to_thread(exfiltration_node, task)
+    result["supervisor_context"] = {"step2": instructions}
+    return result
+
+
+async def step3_node(state: InvestigationState) -> dict:
+    """STEP 3 민감 파일 분류 — Supervisor 추론 후 sensitive_files_node 실행."""
+    main_prompt = load_prompt("main")
+    baseline = state.get("baseline_profile", {})
+    ctx = {
+        "subject_name": state["subject_name"],
+        "subject_position": state["subject_position"],
+        "baseline_summary": json.dumps(baseline, ensure_ascii=False),
+        "analysis_start": state["analysis_start"],
+        "resignation_date": state["resignation_date"],
+        "source_label": state["source_label"],
+    }
+    print(f"\n  [Main Agent] STEP 3 수사 지침 추론 중...", flush=True)
+    instructions = await asyncio.to_thread(
+        _supervisor_reason,
+        main_prompt["supervisor_system"],
+        main_prompt["step3_task"].format(**ctx),
+    )
+    log_block("Main Agent -> STEP 3 Instructions", instructions)
+
+    task = {
         "task": "민감 파일 분류",
         "subject_name": state["subject_name"],
         "source_label": state["source_label"],
-        "supervisor_instructions": instructions_step3,
+        "supervisor_instructions": instructions,
     }
-    task4 = {
+    result = await asyncio.to_thread(sensitive_files_node, task)
+    result["supervisor_context"] = {"step3": instructions}
+    return result
+
+
+async def step4_node(state: InvestigationState) -> dict:
+    """STEP 4 행동 패턴 이상 분석 — Supervisor 추론 후 behavior_node 실행."""
+    main_prompt = load_prompt("main")
+    baseline = state.get("baseline_profile", {})
+    ctx = {
+        "subject_name": state["subject_name"],
+        "subject_position": state["subject_position"],
+        "baseline_summary": json.dumps(baseline, ensure_ascii=False),
+        "analysis_start": state["analysis_start"],
+        "resignation_date": state["resignation_date"],
+        "source_label": state["source_label"],
+    }
+    print(f"\n  [Main Agent] STEP 4 수사 지침 추론 중...", flush=True)
+    instructions = await asyncio.to_thread(
+        _supervisor_reason,
+        main_prompt["supervisor_system"],
+        main_prompt["step4_task"].format(**ctx),
+    )
+    log_block("Main Agent -> STEP 4 Instructions", instructions)
+
+    task = {
         "task": "행동 패턴 이상 분석",
         "subject_name": state["subject_name"],
         "baseline_profile": baseline,
         "analysis_start": state["analysis_start"],
         "resignation_date": state["resignation_date"],
-        "supervisor_instructions": instructions_step4,
+        "supervisor_instructions": instructions,
     }
-
-    results = {}
-
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        futures = {
-            executor.submit(exfiltration_node, task2): "step2",
-            executor.submit(sensitive_files_node, task3): "step3",
-            executor.submit(behavior_node, task4): "step4",
-        }
-        for future in as_completed(futures):
-            results.update(future.result())
-
-    prev = state.get("supervisor_context", {})
-    results["supervisor_context"] = {
-        **prev,
-        "step2": instructions_step2,
-        "step3": instructions_step3,
-        "step4": instructions_step4,
-    }
-    return results
+    result = await asyncio.to_thread(behavior_node, task)
+    result["supervisor_context"] = {"step4": instructions}
+    return result
 
 
 def cross_ref_node(state: InvestigationState) -> dict:
@@ -248,6 +269,7 @@ def cross_ref_node(state: InvestigationState) -> dict:
         state.get("suspicious_channels", []),
         state.get("sensitive_files", []),
     )
+    log_block("CrossReference", cross)
     return {"cross_reference": cross}
 
 
@@ -265,12 +287,12 @@ def step5_node(state: InvestigationState) -> dict:
                 .get("deleted_files", [])
         ),
     }
-    print(f"\n  [Main Agent] STEP 5 사실 검증 지침 추론 중...")
+    print(f"\n  [Main Agent] STEP 5 사실 검증 지침 추론 중...", flush=True)
     instructions = _supervisor_reason(
         system_prompt=main_prompt["supervisor_system"],
         user_prompt=main_prompt["step5_task"].format(**ctx),
     )
-    print(f"  [Main Agent → STEP 5] {instructions[:80]}...")
+    log_block("Main Agent -> STEP 5 Instructions", instructions)
 
     task = {
         "task": "의심 항목 반증 검증",
@@ -295,6 +317,7 @@ def scoring_node(state: InvestigationState) -> dict:
     """Main Agent 리스크 스코어링 — 결정론적 코드."""
     score, breakdown = _calculate_risk_score(state)
     verdict = _calculate_verdict(score)
+    log_block("RiskScoring", {"risk_score": score, "verdict": verdict, "risk_breakdown": breakdown})
     return {"risk_score": score, "verdict": verdict, "risk_breakdown": breakdown}
 
 
@@ -333,7 +356,9 @@ def report_node(state: InvestigationState) -> dict:
         ("user", prompt["report_task"].format(**ctx)),
     ])
 
+    log_block("FinalReportRaw", result.content)
     final_report = _parse_json(result.content)
+    log_block("FinalReportParsed", final_report)
     return {"final_report": final_report}
 
 
@@ -355,37 +380,67 @@ def _parse_json(text: str) -> dict:
 # ---------------------------------------------------------------------------
 
 def _progress_wrap(step: str, fn):
-    """노드 함수를 감싸 SSE 진행 이벤트를 emit한다. session_id가 없으면 무시."""
-    def wrapper(state: InvestigationState):
-        sid = state.get("session_id", "")
-        if sid:
-            from api.progress import emit
-            emit(sid, {"event": "step_start", "step": step})
-        result = fn(state)
-        if sid:
-            from api.progress import emit
-            emit(sid, {"event": "step_done", "step": step})
-        return result
-    return wrapper
+    """노드 함수를 감싸 SSE 진행 이벤트를 emit한다. async 함수도 지원."""
+    if asyncio.iscoroutinefunction(fn):
+        async def async_wrapper(state: InvestigationState):
+            sid = state.get("session_id", "")
+            if sid:
+                from api.progress import emit
+                emit(sid, {"event": "step_start", "step": step})
+            result = await fn(state)
+            if sid:
+                from api.progress import emit
+                emit(sid, {"event": "step_done", "step": step})
+            return result
+        return async_wrapper
+    else:
+        def wrapper(state: InvestigationState):
+            sid = state.get("session_id", "")
+            if sid:
+                from api.progress import emit
+                emit(sid, {"event": "step_start", "step": step})
+            result = fn(state)
+            if sid:
+                from api.progress import emit
+                emit(sid, {"event": "step_done", "step": step})
+            return result
+        return wrapper
 
 
 def build_graph():
-    """Main Supervisor LangGraph 그래프를 생성하고 컴파일해서 반환한다."""
+    """Main Supervisor LangGraph 그래프를 생성하고 컴파일해서 반환한다.
+    step2/3/4 는 async 노드로 step1 완료 후 팬아웃되어 진짜 병렬 실행된다.
+    """
     g = StateGraph(InvestigationState)
 
     g.add_node("step1",     _progress_wrap("step1",     step1_node))
-    g.add_node("parallel",  _progress_wrap("parallel",  parallel_node))
+    g.add_node("step2",     _progress_wrap("step2",     step2_node))
+    g.add_node("step3",     _progress_wrap("step3",     step3_node))
+    g.add_node("step4",     _progress_wrap("step4",     step4_node))
     g.add_node("cross_ref", _progress_wrap("cross_ref", cross_ref_node))
     g.add_node("step5",     _progress_wrap("step5",     step5_node))
     g.add_node("scoring",   _progress_wrap("scoring",   scoring_node))
     g.add_node("report",    _progress_wrap("report",    report_node))
 
     g.set_entry_point("step1")
-    g.add_edge("step1",     "parallel")
-    g.add_edge("parallel",  "cross_ref")
+
+    # step1 완료 후 step2/3/4 팬아웃 (진짜 병렬)
+    g.add_edge("step1",     "step2")
+    g.add_edge("step1",     "step3")
+    g.add_edge("step1",     "step4")
+
+    # step2/3/4 모두 완료되면 cross_ref 로 팬인
+    g.add_edge("step2",     "cross_ref")
+    g.add_edge("step3",     "cross_ref")
+    g.add_edge("step4",     "cross_ref")
+
     g.add_edge("cross_ref", "step5")
     g.add_edge("step5",     "scoring")
     g.add_edge("scoring",   "report")
     g.add_edge("report",    END)
 
     return g.compile()
+
+
+# LangGraph Studio / langgraph dev 가 참조하는 모듈 레벨 그래프 객체
+graph = build_graph()
