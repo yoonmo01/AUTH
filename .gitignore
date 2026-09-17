@@ -246,3 +246,4 @@ pgdata_new.tar.gz
 qdrantdata_new.tar.gz
 skills-lock.json
 dist_electron
+/graphify-out
